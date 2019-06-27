@@ -1,0 +1,4 @@
+docker/*
+singularity/*
+rmlib/*
+Makefile
