@@ -2,6 +2,10 @@ ARG DEBIAN_VERSION="stretch-20190228-slim"
 
 FROM debian:${DEBIAN_VERSION}
 
+ARG MAINTAINER
+ARG PIPELINE_VERSION
+LABEL maintainer="${MAINTAINER}"
+LABEL version="${PIPELINE_VERSION}"
 
 # Set these with empty defaults to avoid using unset variables in path adds
 ENV PATH "${PATH:-}"

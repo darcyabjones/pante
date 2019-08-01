@@ -1,5 +1,5 @@
 PWD=$(shell pwd)
-DEBIAN_VERSION=stretch-20190228-slim
+DEBIAN_VERSION=buster-20190708-slim
 TAG=pante-v0.0.1
 DOCKER_USER=darcyabjones
 BASE_IMAGE=$(DOCKER_USER)/base:$(TAG)
@@ -11,9 +11,9 @@ $(DOCKER_USER)/$(notdir $1):$(TAG)
 endef
 
 # SOFTWARE_VERSIONs
-RED_TAG=v2.0
-RED_REPO=https://github.com/TulsaBioinformaticsToolsmith/Red.git
-RED_PREFIX_ARG=$(INSTALL_BASE)/red/$(RED_TAG)
+GENOMETOOLS_VERSION=1.5.10
+GENOMETOOLS_URL=http://genometools.org/pub/genometools-$(GENOMETOOLS_VERSION).tar.gz
+GENOMETOOLS_PREFIX_ARG=$(INSTALL_BASE)/genometools/$(GENOMETOOLS_VERSION)
 
 RMBLAST_VERSION=2.9.0+
 RMBLAST_URL=ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.9.0/ncbi-blast-2.9.0+-src.tar.gz
@@ -43,6 +43,41 @@ RMOD_VERSION=1.0.11
 RMOD_URL=http://www.repeatmasker.org/RepeatModeler/RepeatModeler-open-$(RMOD_VERSION).tar.gz
 RMOD_PREFIX_ARG=$(INSTALL_BASE)/repeatmodeller/$(RMOD_VERSION)
 
+
+INFERNAL_VERSION=1.1.2
+INFERNAL_URL=http://eddylab.org/infernal/infernal-1.1.2.tar.gz
+INFERNAL_PREFIX_ARG=$(INSTALL_BASE)/infernal/$(INFERNAL_VERSION)
+
+ARAGORN_VERSION=1.2.38
+ARAGORN_URL=http://130.235.244.92/ARAGORN/Downloads/aragorn1.2.38.tgz
+ARAGORN_PREFIX_ARG=$(INSTALL_BASE)/aragorn/$(ARAGORN_VERSION)
+
+VIENNA_VERSION=2.4.13
+VIENNA_URL=https://www.tbi.univie.ac.at/RNA/download/sourcecode/2_4_x/ViennaRNA-2.4.13.tar.gz
+VIENNA_PREFIX_ARG=$(INSTALL_BASE)/vienna/$(VIENNA_VERSION)
+
+STRUCTRNAFINDER_COMMIT=3d5479b
+STRUCTRNAFINDER_REPO=https://github.com/viniciusmaracaja/structRNAfinder.git
+STRUCTRNAFINDER_PREFIX_ARG=$(INSTALL_BASE)/structrnafinder/$(STRUCTRNAFINDER_COMMIT)
+
+TRNASCAN_VERSION=2.0.3
+TRNASCAN_URL=http://trna.ucsc.edu/software/trnascan-se-2.0.3.tar.gz
+TRNASCAN_PREFIX_ARG=$(INSTALL_BASE)/trnascan/$(TRNASCAN_VERSION)
+
+HMMER2_VERSION=2.3.2
+HMMER2_URL=http://eddylab.org/software/hmmer/hmmer-2.3.2.tar.gz
+HMMER2_PREFIX_ARG=$(INSTALL_BASE)/hmmer2/$(HMMER2_VERSION)
+
+RNAMMER_VERSION=1.2
+RNAMMER_PREFIX_ARG=$(INSTALL_BASE)/rnammer/$(RNAMMER_VERSION)
+RNAMMER_TAR=sources/rnammer-1.2.src.tar.Z
+
+OCCULTERCUT_VERSION=1.1
+OCCULTERCUT_URL=https://downloads.sourceforge.net/project/occultercut/OcculterCut_v1.1.tar.gz
+OCCULTERCUT_PREFIX_ARG=$(INSTALL_BASE)/occultercut/$(OCCULTERCUT_VERSION)
+
+# Downloads
+
 RM_LIB_ARG=/data/rmlib
 
 RMASK_META_TAR=RepeatMaskerMetaData-20181026.tar.gz
@@ -53,14 +88,51 @@ REPBASE_URL=http://www.girinst.org/server/RepBase/protected/repeatmaskerlibrarie
 REPBASE_USERNAME:=
 REPBASE_PASSWORD:=
 
+GENERAL=genometools python3 posix
+NONCODING=aragorn structrnafinder trnascan
+ALIGNMENT=rmblast
+ANNOTATION=repeatmasker
+PROPRIETARY=rnammer
 
-all: docker
+OPEN=$(GENERAL) $(NONCODING) $(ALIGNMENT) $(ANNOTATION)
 
-docker: docker/repeatmasker
+all: docker/all singularity/all
 
-# Singularity is distributed as a monolith
-# Target not implemented yet
-# singularity: singularity/pante.sif
+# Docker targets
+docker: docker/pante
+docker/all: docker/general docker/alignment docker/annotation docker/noncoding
+	@echo "WARNING: proprietary software will not be built by default."
+	@echo "WARNING: call `make docker/proprietary` explicitly to create them."
+
+docker/general: $(addprefix docker/,$(GENERAL))
+docker/alignment: $(addprefix docker/,$(ALIGNMENT))
+docker/annotation: $(addprefix docker/,$(ANNOTATION))
+docker/noncoding: $(addprefix docker/,$(NONCODING))
+
+# Proprietary software won't be built by default.
+docker/proprietary: $(addprefix docker/,$(PROPRIETARY))
+
+# Singularity targets
+singularity: singularity/pante.sif
+singularity/all: singularity/general singularity/alignment singularity/annotation singularity/noncoding
+	@echo "WARNING: proprietary software will not be built by default."
+	@echo "WARNING: call `make singularity/proprietary` explicitly to create them."
+
+singularity/general: $(addprefix singularity/,$(addsuffix .sif,$(GENERAL)))
+singularity/alignment: $(addprefix singularity/,$(addsuffix .sif,$(ALIGNMENT)))
+singularity/annotation: $(addprefix singularity/,$(addsuffix .sif,$(ANNOTATION)))
+singularity/noncoding: $(addprefix singularity/,$(addsuffix .sif,$(NONCODING)))
+
+# Proprietary software won't be built by default.
+singularity/proprietary: $(addprefix singularity/,$(addsuffix .sif,$(PROPRIETARY)))
+
+# Pull containers for dockerhub
+dockerpull: dockerpull/pante
+dockerpull/all: dockerpull/general dockerpull/alignment dockerpull/annotation dockerpull/noncoding
+dockerpull/general: $(addprefix dockerpull/,$(GENERAL))
+dockerpull/alignment: $(addprefix dockerpull/,$(ALIGNMENT))
+dockerpull/annotation: $(addprefix dockerpull/,$(ANNOTATION))
+dockerpull/noncoding: $(addprefix dockerpull/,$(NONCODING))
 
 
 clean:
@@ -71,22 +143,28 @@ clean:
 
 tidy:
 	# Just removes untagged images to free up space
-	#docker rmi -f $(shell docker images -f "dangling=true" -q) || true
 	docker image prune -f
 
 # Generic rules
 singularity/%.sif: docker/%
 	@mkdir -p "$(dir $@)"
-	singularity build "$@" "docker-daemon://$(call make_image_name,$(notdir $(basename $@)))"
+	singularity build --force "$@" "docker-daemon://$(call make_image_name,$(notdir $(basename $@)))"
 
 docker/%.tar.gz: docker/%
 	@mkdir -p "$(dir $@)"
 	docker save "$(call make_image_name,$(basename $(basename $@)))" | gzip > $@
 
+dockerpull/%:
+	docker pull "$(call make_image_name,$(notdir $@))"
+	@mkdir -p "$(dir $@)"
+	@touch docker/$(notdir $@)
+
 
 docker/base: base.Dockerfile
 	docker build \
 	  --build-arg DEBIAN_VERSION=$(DEBIAN_VERSION) \
+	  --build-arg MAINTAINER="$(MAINTAINER)" \
+	  --build-arg PIPELINE_VERSION="$(TAG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -94,7 +172,7 @@ docker/base: base.Dockerfile
 	@touch $@
 
 
-docker/python3: python3.Dockerfile
+docker/python3: python3.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
 	  --file $< \
@@ -104,7 +182,7 @@ docker/python3: python3.Dockerfile
 	@touch $@
 
 
-docker/posix: posix.Dockerfile
+docker/posix: posix.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
 	  --file $< \
@@ -112,32 +190,23 @@ docker/posix: posix.Dockerfile
 	  .
 	@mkdir -p "$(dir $@)"
 	@touch $@
+
+
+docker/genometools: genometools.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg GENOMETOOLS_VERSION="$(GENOMETOOLS_VERSION)" \
+	  --build-arg GENOMETOOLS_URL="$(GENOMETOOLS_URL)" \
+	  --build-arg GENOMETOOLS_PREFIX_ARG="$(GENOMETOOLS_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
 
 
 # Repeat masking stuff
-
-docker/edge_base: base.Dockerfile
-	docker build \
-	  --build-arg DEBIAN_VERSION="buster-20190228-slim" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
-
-
-docker/red: red.Dockerfile docker/edge_base docker/base
-	docker build \
-	  --build-arg BUILD_IMAGE="$(call make_image_name,edge_base)" \
-	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg RED_TAG="$(RED_TAG)" \
-	  --build-arg RED_REPO="$(RED_REPO)" \
-	  --build-arg RED_PREFIX_ARG="$(RED_PREFIX_ARG)" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
 
 
 docker/rmblast: rmblast.Dockerfile docker/base
@@ -177,6 +246,108 @@ docker/repeatmasker: repeatmasker.Dockerfile docker/base docker/rmblast
 	  --build-arg RMOD_URL="$(RMOD_URL)" \
 	  --build-arg RMOD_PREFIX_ARG="$(RMOD_PREFIX_ARG)" \
 	  --build-arg RM_LIB_ARG="$(RM_LIB_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/aragorn: aragorn.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg ARAGORN_VERSION="$(ARAGORN_VERSION)" \
+	  --build-arg ARAGORN_URL="$(ARAGORN_URL)" \
+	  --build-arg ARAGORN_PREFIX_ARG="$(ARAGORN_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/infernal: infernal.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg INFERNAL_VERSION="$(INFERNAL_VERSION)" \
+	  --build-arg INFERNAL_URL="$(INFERNAL_URL)" \
+	  --build-arg INFERNAL_PREFIX_ARG="$(INFERNAL_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/structrnafinder: structrnafinder.Dockerfile docker/base docker/infernal
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg STRUCTRNAFINDER_COMMIT="$(STRUCTRNAFINDER_COMMIT)" \
+	  --build-arg STRUCTRNAFINDER_REPO="$(STRUCTRNAFINDER_REPO)" \
+	  --build-arg STRUCTRNAFINDER_PREFIX_ARG="$(STRUCTRNAFINDER_PREFIX_ARG)" \
+	  --build-arg VIENNA_VERSION="$(VIENNA_VERSION)" \
+	  --build-arg VIENNA_URL="$(VIENNA_URL)" \
+	  --build-arg VIENNA_PREFIX_ARG="$(VIENNA_PREFIX_ARG)" \
+	  --build-arg INFERNAL_IMAGE="$(call make_image_name,infernal)" \
+	  --build-arg INFERNAL_VERSION="$(INFERNAL_VERSION)" \
+	  --build-arg INFERNAL_PREFIX_ARG="$(INFERNAL_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/trnascan: trnascan.Dockerfile docker/base docker/infernal
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg TRNASCAN_VERSION="$(TRNASCAN_VERSION)" \
+	  --build-arg TRNASCAN_URL="$(TRNASCAN_URL)" \
+	  --build-arg TRNASCAN_PREFIX_ARG="$(TRNASCAN_PREFIX_ARG)" \
+	  --build-arg INFERNAL_IMAGE="$(call make_image_name,infernal)" \
+	  --build-arg INFERNAL_VERSION="$(INFERNAL_VERSION)" \
+	  --build-arg INFERNAL_PREFIX_ARG="$(INFERNAL_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/occultercut: occultercut.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
+	  --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
+	  --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/hmmer2: hmmer2.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg HMMER2_VERSION="$(HMMER2_VERSION)" \
+	  --build-arg HMMER2_URL="$(HMMER2_URL)" \
+	  --build-arg HMMER2_PREFIX_ARG="$(HMMER2_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+docker/rnammer: rnammer.Dockerfile docker/base docker/hmmer2
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg RNAMMER_VERSION="$(RNAMMER_VERSION)" \
+	  --build-arg RNAMMER_TAR="$(RNAMMER_TAR)" \
+	  --build-arg RNAMMER_PREFIX_ARG="$(RNAMMER_PREFIX_ARG)" \
+	  --build-arg HMMER2_IMAGE="$(call make_image_name,hmmer2)" \
+	  --build-arg HMMER2_VERSION="$(HMMER2_VERSION)" \
+	  --build-arg HMMER2_PREFIX_ARG="$(HMMER2_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .

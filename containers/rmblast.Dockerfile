@@ -1,6 +1,6 @@
 ARG IMAGE
 
-FROM "${IMAGE}" as builder
+FROM "${IMAGE}" as rmblast_builder
 
 ARG RMBLAST_VERSION="2.9.0+"
 ARG RMBLAST_URL="ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.9.0/ncbi-blast-2.9.0+-src.tar.gz"
@@ -89,8 +89,10 @@ ENV CPATH="${RMBLAST_PREFIX}/include"
 ENV LIBRARY_PATH="${RMBLAST_PREFIX}/lib:${LIBRARY_PATH}"
 ENV LD_LIBRARY_PATH="${RMBLAST_PREFIX}/lib:${LD_LIBRARY_PATH}"
 
-COPY --from=builder "${RMBLAST_PREFIX}" "${RMBLAST_PREFIX}"
-COPY --from=builder "${APT_REQUIREMENTS_FILE}" /build/apt/rmblast.txt
+LABEL rmblast.version="${RMBLAST_VERSION}"
+
+COPY --from=rmblast_builder "${RMBLAST_PREFIX}" "${RMBLAST_PREFIX}"
+COPY --from=rmblast_builder "${APT_REQUIREMENTS_FILE}" /build/apt/rmblast.txt
 
 RUN  set -eu \
   && DEBIAN_FRONTEND=noninteractive \
