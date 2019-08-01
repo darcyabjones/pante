@@ -11,6 +11,14 @@ def helpMessage() {
     # pante
 
 
+    Example:
+    nextflow run -resume -profile dev,standard main.nf \
+      --genomes "A_fumigatus_A1163_chr1.fasta" \
+      --repbase "containers/rmlib" \
+      --rmspecies "fungi" \
+      --rnammer
+
+
     ## Exit codes
 
     - 0: All ok.
@@ -87,6 +95,8 @@ genomes.into {
     genomes4RunStructRNAFinder;
     genomes4RunRNAmmer;
     genomes4RunOcculterCut;
+    genomes4RunRepeatMaskerRepbase;
+    genomes4RunRepeatModeller;
 }
 
 
@@ -104,7 +114,7 @@ process runTRNAScan {
     tag { name }
 
     input:
-    set val(name), file(fasta), file(faidx) from genomes4RunTRNAScan
+    set val(name), file(fasta) from genomes4RunTRNAScan
 
     output:
     set val(name),
@@ -191,7 +201,7 @@ process runStructRNAFinder {
     params.structrnafinder
 
     input:
-    set val(name), file(fasta), file(faidx) from genomes4RunStructRNAFinder
+    set val(name), file(fasta) from genomes4RunStructRNAFinder
     file "rfamdb" from pressedRfam
 
     output:
@@ -229,7 +239,7 @@ process runRNAmmer {
     params.rnammer
 
     input:
-    set val(name), file(fasta), file(faidx) from genomes4RunRNAmmer
+    set val(name), file(fasta) from genomes4RunRNAmmer
 
     output:
     set val(name), file("${name}_rnammer.gff2") into rnammerResults
@@ -319,7 +329,7 @@ process runOcculterCut {
 // Run
 
 
-process runRepeatMasker {
+process runRepeatMaskerRepbase {
 
     label "repeatmasker"
     label "medium_task"
@@ -329,7 +339,7 @@ process runRepeatMasker {
     tag "${name}"
 
     input:
-    set val(name), file(genome) from genomes
+    set val(name), file(fasta) from genomes4RunRepeatMaskerRepbase
     file "rmlib" from repbase
 
     output:
@@ -345,7 +355,7 @@ process runRepeatMasker {
       -pa "${task.cpus}" \
       -xsmall \
       -dir "${name}" \
-      "${genome}"
+      "${fasta}"
     """
 }
 
@@ -362,22 +372,24 @@ process runRepeatMasker {
 
 // Repeat modeller
 /*
+*/
 process runRepeatModeller {
+
     label "repeatmasker"
+    label "small_task"
 
     input:
-    set val(name), file(genome) from genomes4RepeatModeller
+    set val(name), file(fasta) from genomes4RunRepeatModeller
 
-
+    script:
     """
     # Where will this be placed?
-    BuildDatabase -name ${name} -engine ncbi ${genome}
+    BuildDatabase -name "${name}" -engine ncbi "${fasta}"
 
     # Can we split this over scaffolds?
     RepeatModeler -engine ncbi -pa ${task.cpus} -database ${name} >& run.out
     """
 }
-*/
 
 // CARP ? Might need to pipeline this myself, currently exists as separate tools and description of workflow.
 // MGEScan-non-ltr

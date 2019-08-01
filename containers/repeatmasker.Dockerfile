@@ -218,15 +218,14 @@ RUN  chmod a+x "${RMASK_PREFIX}/prep_repeatmasker_lib.sh" \
 
 
 # Configure repeatmodeler scripts
-# Unsure if RECON_DIR needs to point to base dir or bin
 WORKDIR ${RMOD_PREFIX}
 RUN  cp RepModelConfig.pm.tmpl RepModelConfig.pm \
   && sed -i "s~REPEATMASKER_DIR\s*=\s*\"/usr/local/RepeatMasker\"~REPEATMASKER_DIR = \"${RMASK_PREFIX}\"~" RepModelConfig.pm \
   && sed -i 's~"$REPEATMASKER_DIR/Libraries/RepeatMasker.lib"~$ENV{"RM_LIB"} . "/RepeatMasker.lib"~' RepModelConfig.pm \
   && sed -i "s~RMBLAST_DIR\s*=\s*\"/usr/local/rmblast\"~RMBLAST_DIR = \"${RMBLAST_PREFIX}/bin\"~" RepModelConfig.pm \
-  && sed -i "s~RECON_DIR\s*=\s*\"/usr/local/bin\"~RECON_DIR = \"${RECON_PREFIX}\"~" RepModelConfig.pm \
+  && sed -i "s~RECON_DIR\s*=\s*\"/usr/local/bin\"~RECON_DIR = \"${RECON_PREFIX}/bin\"~" RepModelConfig.pm \
   && sed -i "s~NSEG_PRGM\s*=\s*\"/usr/local/bin/nseg\"~NSEG_PRGM = \"${NSEG_PREFIX}/nseg\"~" RepModelConfig.pm \
-  && sed -i "s~RSCOUT_DIR\s*=\s*\"/usr/local/bin/\"~RSCOUT_DIR = \"${REPEATSCOUT_PREFIX}\"~" RepModelConfig.pm \
+  && sed -i "s~RSCOUT_DIR\s*=\s*\"/usr/local/bin/\"~RSCOUT_DIR = \"${REPEATSCOUT_PREFIX}/bin\"~" RepModelConfig.pm \
   && perl -i -0pe 's/^#\!.*/#\!\/usr\/bin\/env perl/g' \
        configure \
        BuildDatabase \
