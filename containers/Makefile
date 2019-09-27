@@ -15,6 +15,10 @@ GENOMETOOLS_VERSION=1.5.10
 GENOMETOOLS_URL=http://genometools.org/pub/genometools-$(GENOMETOOLS_VERSION).tar.gz
 GENOMETOOLS_PREFIX_ARG=$(INSTALL_BASE)/genometools/$(GENOMETOOLS_VERSION)
 
+GFFPAL_TAG=v0.0.2
+GFFPAL_REPO=https://github.com/darcyabjones/gffpal.git
+GFFPAL_PREFIX_ARG=$(INSTALL_BASE)/gffpal/$(GFFPAL_TAG)
+
 RMBLAST_VERSION=2.9.0+
 RMBLAST_URL=ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.9.0/ncbi-blast-2.9.0+-src.tar.gz
 RMBLAST_PATCH_URL=http://www.repeatmasker.org/isb-2.9.0+-rmblast.patch.gz
@@ -42,6 +46,11 @@ RMASK_PREFIX_ARG=$(INSTALL_BASE)/repeatmasker/$(RMASK_VERSION)
 RMOD_VERSION=1.0.11
 RMOD_URL=http://www.repeatmasker.org/RepeatModeler/RepeatModeler-open-$(RMOD_VERSION).tar.gz
 RMOD_PREFIX_ARG=$(INSTALL_BASE)/repeatmodeller/$(RMOD_VERSION)
+
+
+HMMER3_VERSION=3.2.1
+HMMER3_URL=http://eddylab.org/software/hmmer/hmmer-3.2.1.tar.gz
+HMMER3_PREFIX_ARG=$(INSTALL_BASE)/hmmer3/$(HMMER3_VERSION)
 
 
 INFERNAL_VERSION=1.1.2
@@ -76,6 +85,16 @@ OCCULTERCUT_VERSION=1.1
 OCCULTERCUT_URL=https://downloads.sourceforge.net/project/occultercut/OcculterCut_v1.1.tar.gz
 OCCULTERCUT_PREFIX_ARG=$(INSTALL_BASE)/occultercut/$(OCCULTERCUT_VERSION)
 
+
+MITEFINDER_COMMIT=833754b
+MITEFINDER_REPO=https://github.com/screamer/miteFinder.git
+MITEFINDER_PREFIX_ARG=$(INSTALL_BASE)/mitefinder/$(MITEFINDER_COMMIT)
+
+
+EAHELITRON_COMMIT=c4c3dca
+EAHELITRON_REPO=https://github.com/dontkme/EAHelitron.git
+EAHELITRON_PREFIX_ARG=$(INSTALL_BASE)/eahelitron/$(EAHELITRON_COMMIT)
+
 # Downloads
 
 RM_LIB_ARG=/data/rmlib
@@ -88,10 +107,10 @@ REPBASE_URL=http://www.girinst.org/server/RepBase/protected/repeatmaskerlibrarie
 REPBASE_USERNAME:=
 REPBASE_PASSWORD:=
 
-GENERAL=genometools python3 posix
+GENERAL=genometools python3 posix gffpal
 NONCODING=aragorn structrnafinder trnascan
 ALIGNMENT=rmblast
-ANNOTATION=repeatmasker
+ANNOTATION=repeatmasker eahelitron mitefinder
 PROPRIETARY=rnammer
 
 OPEN=$(GENERAL) $(NONCODING) $(ALIGNMENT) $(ANNOTATION)
@@ -200,12 +219,16 @@ docker/posix: posix.Dockerfile docker/base
 	@touch $@
 
 
-docker/genometools: genometools.Dockerfile docker/base
+docker/genometools: genometools.Dockerfile docker/base docker/hmmer3
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
 	  --build-arg GENOMETOOLS_VERSION="$(GENOMETOOLS_VERSION)" \
 	  --build-arg GENOMETOOLS_URL="$(GENOMETOOLS_URL)" \
 	  --build-arg GENOMETOOLS_PREFIX_ARG="$(GENOMETOOLS_PREFIX_ARG)" \
+	  --build-arg HMMER3_IMAGE="$(call make_image_name,hmmer3)" \
+	  --build-arg HMMER3_VERSION="$(HMMER3_VERSION)" \
+	  --build-arg HMMER3_URL="$(HMMER3_URL)" \
+	  --build-arg HMMER3_PREFIX_ARG="$(HMMER3_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -213,8 +236,46 @@ docker/genometools: genometools.Dockerfile docker/base
 	@touch $@
 
 
+docker/gffpal: gffpal.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg GFFPAL_TAG="$(GFFPAL_TAG)" \
+	  --build-arg GFFPAL_REPO="$(GFFPAL_REPO)" \
+	  --build-arg GFFPAL_PREFIX_ARG="$(GFFPAL_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
 
 # Repeat masking stuff
+
+
+docker/mitefinder: mitefinder.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg MITEFINDER_COMMIT="$(MITEFINDER_COMMIT)" \
+	  --build-arg MITEFINDER_REPO="$(MITEFINDER_REPO)" \
+	  --build-arg MITEFINDER_PREFIX_ARG="$(MITEFINDER_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/eahelitron: eahelitron.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg EAHELITRON_COMMIT="$(EAHELITRON_COMMIT)" \
+	  --build-arg EAHELITRON_REPO="$(EAHELITRON_REPO)" \
+	  --build-arg EAHELITRON_PREFIX_ARG="$(EAHELITRON_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
 
 
 docker/rmblast: rmblast.Dockerfile docker/base
@@ -328,6 +389,19 @@ docker/occultercut: occultercut.Dockerfile docker/base
 	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
 	  --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
 	  --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/hmmer3: hmmer3.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg HMMER3_VERSION="$(HMMER3_VERSION)" \
+	  --build-arg HMMER3_URL="$(HMMER3_URL)" \
+	  --build-arg HMMER3_PREFIX_ARG="$(HMMER3_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .

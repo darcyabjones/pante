@@ -9,5 +9,6 @@ containers/docker
 containers/sources
 containers/downloads
 containers/rmlib
+containers/tmp
 .nextflow
 run

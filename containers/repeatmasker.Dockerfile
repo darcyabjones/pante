@@ -198,11 +198,11 @@ RUN  chmod a+x "${RMASK_PREFIX}/prep_repeatmasker_lib.sh" \
   && sed -i 's/DEFAULT_SEARCH_ENGINE\s*=\s*"crossmatch"/DEFAULT_SEARCH_ENGINE = "ncbi"/' RepeatMaskerConfig.pm \
   && sed -i 's~HMMER_DIR\s*=\s*"/usr/local/hmmer"~HMMER_DIR = "/usr/bin"~' RepeatMaskerConfig.pm \
   && sed -i "s~RMBLAST_DIR\s*=\s*\"/usr/local/rmblast\"~RMBLAST_DIR = \"${RMBLAST_PREFIX}/bin\"~" RepeatMaskerConfig.pm \
-  && sed -i 's~"$REPEATMASKER_DIR/Libraries"~"$ENV{'RM_LIB'}"~' RepeatMaskerConfig.pm \
+  && sed -i 's~"$REPEATMASKER_DIR/Libraries"~$ENV{"RM_LIB"}~' RepeatMaskerConfig.pm \
   && sed -i 's~REPEATMASKER_DIR/Libraries~REPEATMASKER_LIB_DIR~' RepeatMasker \
-  && sed -i '/use strict;$/a use lib $ENV{RM_LIB};' RepeatMasker \
-  && sed -i '/use strict;$/a use lib $ENV{RM_LIB};' ProcessRepeats \
-  && sed -i 's~\$DIRECTORY/Libraries~$ENV{RM_LIB}~g' ProcessRepeats \
+  && sed -i '/use strict;$/a use lib $ENV{"RM_LIB"};' RepeatMasker \
+  && sed -i '/use strict;$/a use lib $ENV{"RM_LIB"};' ProcessRepeats \
+  && sed -i 's~\$DIRECTORY/Libraries~$ENV{"RM_LIB"}~g' ProcessRepeats \
   && mv "${RMASK_PREFIX}/Libraries/RepeatPeps.lib" "${RMASK_PREFIX}" \
   && rm -rf -- "${RMASK_PREFIX}/Libraries" \
   && perl -i -0pe 's/^#\!.*perl.*/#\!\/usr\/bin\/env perl/g' \
@@ -226,6 +226,10 @@ RUN  cp RepModelConfig.pm.tmpl RepModelConfig.pm \
   && sed -i "s~RECON_DIR\s*=\s*\"/usr/local/bin\"~RECON_DIR = \"${RECON_PREFIX}/bin\"~" RepModelConfig.pm \
   && sed -i "s~NSEG_PRGM\s*=\s*\"/usr/local/bin/nseg\"~NSEG_PRGM = \"${NSEG_PREFIX}/nseg\"~" RepModelConfig.pm \
   && sed -i "s~RSCOUT_DIR\s*=\s*\"/usr/local/bin/\"~RSCOUT_DIR = \"${REPEATSCOUT_PREFIX}/bin\"~" RepModelConfig.pm \
+  && sed -i "s~TRF_PRGM\s*=\s*\"/usr/local/bin/trf\"~TRF_PRGM = \"${TRF_PREFIX}/bin/trf\"~" RepModelConfig.pm \
+  && sed -i 's~"-db $RepModelConfig::REPEATMASKER_DIR/Libraries/RepeatPeps.lib "~"-db " . $ENV{"RM_LIB"} . "/RepeatPeps.lib "~' RepeatClassifier \
+  && sed -i 's~"Missing $RepModelConfig::REPEATMASKER_DIR/Libraries/"~"Missing " . $ENV{"RM_LIB"} . "/"~' RepeatClassifier \
+  && sed -i 's~"$RepModelConfig::REPEATMASKER_DIR/Libraries~$ENV{"RM_LIB"} . "~' RepeatClassifier \
   && perl -i -0pe 's/^#\!.*/#\!\/usr\/bin\/env perl/g' \
        configure \
        BuildDatabase \

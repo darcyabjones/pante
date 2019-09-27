@@ -38,10 +38,16 @@ params.rmspecies = "fungi"
 params.helitronscanner_heads = "$baseDir/data/helitronscanner_head.lcvs"
 params.helitronscanner_tails = "$baseDir/data/helitronscanner_tail.lcvs"
 
+params.mitefinder_profiles = false
+
 params.structrnafinder = false
 params.rfam = false
 params.rfam_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz"
 params.rnammer = false
+
+params.ltr_hmms = false
+params.gypsydb_url = "http://gydb.org/gydbModules/collection/collection/db/GyDB_collection.zip"
+params.pfam_ltr_ids = "$baseDir/data/pfam_ltr_domains.txt"
 
 
 if ( params.genomes ) {
@@ -59,6 +65,16 @@ if ( params.repbase ) {
 } else {
     log.info "Sorry for now we need repbase"
     exit 1
+}
+
+
+if ( params.pfam_ltr_ids ) {
+    Channel
+        .fromPath(params.pfam_ltr_ids, checkIfExists: true, type: "file")
+        .first()
+        .set { pfamLtrIds }
+} else {
+    pfamLtrIds = Channel.empty()
 }
 
 
@@ -90,6 +106,87 @@ if ( params.rfam ) {
 }
 
 
+if ( params.ltr_hmms ) {
+    Channel
+        .fromPath( params.ltr_hmms, checkIfExists: true, type: "file")
+        .collect()
+        .set { ltrHMMs }
+} else {
+
+    process getGypsyDB {
+
+        label "download"
+        label "small_task"
+
+        publishDir "${params.outdir}/downloads"
+
+        output:
+        file "gypsydb/*" into gypsydbHMMs
+
+        script:
+        """
+        wget -O gypsy.zip "${params.gypsydb_url}"
+        unzip gypsy.zip
+        mv GyDB*/profiles ./gypsydb
+        rm -rf -- GyDB*
+        """
+    }
+
+
+    process getPfamHmms {
+
+        label "download"
+        label "small_task"
+
+        publishDir "${params.outdir}/downloads"
+
+        input:
+        file "pfam_ids.txt" from pfamLtrIds
+
+        output:
+        file "pfam_ltrs/*" into pfamLtrHMMs mode flatten
+
+        script:
+        """
+        mkdir -p pfam_ltrs
+
+          cat pfam_ids.txt \
+        | xargs \
+            -n 1 \
+            -P "${task.cpus}" \
+            -I "{}" \
+            -- \
+            wget --no-check-certificate -P pfam_ltrs "https://pfam.xfam.org/family/{}/hmm"
+        """
+    }
+
+    gypsydbHMMs.mix(pfamLtrHMMs).collect().set { ltrHMMs }
+}
+
+
+if ( params.mitefinder_profiles ) {
+    Channel
+        .fromPath(params.mitefinder_profiles, checkIfExists: true, type: "file")
+        .first()
+        .set { miteFinderProfiles }
+} else {
+
+    process getMiteFinderProfiles {
+
+        label "mitefinder"
+        label "small_task"
+
+        output:
+        file "pattern_scoring.txt" into miteFinderProfiles
+
+        script:
+        """
+        cp "\${MITEFINDER_PROFILE}" ./
+        """
+    }
+}
+
+
 genomes.into {
     genomes4RunTRNAScan;
     genomes4RunStructRNAFinder;
@@ -97,6 +194,9 @@ genomes.into {
     genomes4RunOcculterCut;
     genomes4RunRepeatMaskerRepbase;
     genomes4RunRepeatModeller;
+    genomes4RunLtrHarvest;
+    genomes4RunEAHelitron;
+    genomes4MiteFinder;
 }
 
 
@@ -104,6 +204,12 @@ genomes.into {
 // Finding non-coding RNA
 //
 
+
+/*
+ * tRNAScan-SE
+ * doi: 10.1101/614032
+ * url: http://lowelab.ucsc.edu/tRNAscan-SE/
+ */
 process runTRNAScan {
 
     label "trnascan"
@@ -136,6 +242,7 @@ process runTRNAScan {
       -m "${name}_trnascan_stats.txt" \
       -b "${name}_trnascan.bed" \
       -a "${name}_trnascan.fasta" \
+      --forceow \
       --log trna.log \
       --thread "${task.cpus}" \
       "${fasta}"
@@ -143,6 +250,10 @@ process runTRNAScan {
 }
 
 
+/*
+ * Convert trnascan-se output to nice GFF3.
+ * Add predicted secondary structure and anticodons as attributes.
+ */
 process getTRNAScanGFF {
 
     label "gffpal"
@@ -160,7 +271,7 @@ process getTRNAScanGFF {
 
     script:
     """
-    trnascan2gff -o "${name}_trnascan.gff3" ts.txt ss.txt
+    gffpal trnascan2gff -o "${name}_trnascan.gff3" ts.txt ss.txt
     """
 }
 
@@ -188,6 +299,7 @@ process pressRfam {
 }
 
 
+// TODO replace this with regular infernal
 process runStructRNAFinder {
 
     label "structrnafinder"
@@ -226,6 +338,11 @@ process runStructRNAFinder {
 }
 
 
+/*
+ * RNAmmer
+ * doi: 10.1093/nar/gkm160
+ * url:
+ */
 process runRNAmmer {
 
     label "rnammer"
@@ -256,6 +373,9 @@ process runRNAmmer {
 }
 
 
+/*
+ * Convert gff2 format to gff3 and modify type labels.
+ */
 process getRNAmmerGFF {
 
     label "gffpal"
@@ -273,19 +393,21 @@ process getRNAmmerGFF {
 
     script:
     """
-    rnammer2gff -k euk -o "${name}_rnammer.gff3" rnammer.gff2
+    gffpal rnammer2gff -k euk -o "${name}_rnammer.gff3" rnammer.gff2
     """
 }
 
 
+/*
+ * OcculterCut
+ * doi: 10.1093/gbe/evw121
+ */
 process runOcculterCut {
 
     label "occultercut"
     label "small_task"
-
-    publishDir "${params.outdir}/composition/${name}"
-
     tag { name }
+    publishDir "${params.outdir}/composition/${name}"
 
     input:
     set val(name), file(fasta) from genomes4RunOcculterCut
@@ -326,17 +448,57 @@ process runOcculterCut {
 }
 
 
-// Run
+//
+// Find repeats/TEs
+//
 
 
+/*
+ * RepeatModeller
+ * url: http://www.repeatmasker.org/RepeatModeler/
+ */
+process runRepeatModeller {
+
+    label "repeatmasker"
+    label "medium_task"
+    tag "${name}"
+    publishDir "${params.outdir}/repeatmodeller"
+
+    input:
+    set val(name), file(fasta) from genomes4RunRepeatModeller
+    file "rmlib" from repbase
+
+    output:
+    file "${name}_repeatmodeller_consensus.fasta"
+    set val(name),
+        file("${name}_repeatmodeller_msa.stk") into repeatModellerResults
+
+    script:
+    """
+    export RM_LIB="\${PWD}/rmlib"
+
+    # Where will this be placed?
+    BuildDatabase -name "${name}" -engine ncbi "${fasta}"
+
+    # Can we split this over scaffolds?
+    RepeatModeler -engine ncbi -pa ${task.cpus} -database ${name} >& run.out
+
+    mv "${name}-families.fa" "${name}_repeatmodeller_consensus.fasta"
+    mv "${name}-families.stk" "${name}_repeatmodeller_msa.stk"
+    """
+}
+
+
+/*
+ * RepeatMasker
+ * url: http://www.repeatmasker.org/RMDownload.html
+ */
 process runRepeatMaskerRepbase {
 
     label "repeatmasker"
     label "medium_task"
-
-    publishDir "${params.outdir}/repeatmasker"
-
     tag "${name}"
+    publishDir "${params.outdir}/repeatmasker"
 
     input:
     set val(name), file(fasta) from genomes4RunRepeatMaskerRepbase
@@ -359,148 +521,187 @@ process runRepeatMaskerRepbase {
     """
 }
 
+
 /*
- * De-novo repeat assemblers
+ * LTRHarvest
+ * doi: 10.1186/1471-2105-9-18
  */
+process runLtrHarvest {
 
-// REPdenovo
+    label "genometools"
+    label "small_task"
+
+    tag "${name}"
+
+    input:
+    set val(name), file(fasta) from genomes4RunLtrHarvest
+
+    output:
+    set val(name), file(fasta), file("${fasta}*"), file("${name}_ltrharvest.gff3") into ltrHarvestResults
+    set val(name), file("${name}_ltrharvest.fasta")
+    set val(name), file("${name}_ltrharvest_inner.fasta")
+
+    """
+    # Create the suffix arrays
+    gt suffixerator \
+      -db "${fasta}" \
+      -indexname "${fasta}" \
+      -lossless \
+      -tis \
+      -suf \
+      -lcp \
+      -des \
+      -ssp \
+      -sds \
+      -dna
+
+    gt ltrharvest \
+      -seqids yes \
+      -index "${fasta}" \
+      -gff3 "${name}_ltrharvest_tmp.gff3" \
+      -out "${name}_ltrharvest.fasta" \
+      -outinner "${name}_ltrharvest_inner.fasta"
+
+    gt gff3 \
+      -tidy \
+      -sort \
+      -retainids \
+      "${name}_ltrharvest_tmp.gff3" \
+    > "${name}_ltrharvest.gff3"
+    """
+}
+
 
 /*
- * De-novo repeat finders
+ * HMMs from gypsydb are in HMMER2 format, we just convert all to the
+ * version of hmmer we're using.
  */
+process fixLtrHMMs {
 
-
-// Repeat modeller
-/*
-*/
-process runRepeatModeller {
-
-    label "repeatmasker"
+    label "hmmer3"
     label "small_task"
 
     input:
-    set val(name), file(fasta) from genomes4RunRepeatModeller
+    file "in/*" from ltrHMMs.collect()
+
+    output:
+    file "out/*" into fixedLtrHMMs
 
     script:
     """
-    # Where will this be placed?
-    BuildDatabase -name "${name}" -engine ncbi "${fasta}"
+    mkdir -p out
 
-    # Can we split this over scaffolds?
-    RepeatModeler -engine ncbi -pa ${task.cpus} -database ${name} >& run.out
+    for f in in/*;
+    do
+        hmmconvert "\${f}" > "out/\$(basename \${f})"
+    done
     """
 }
 
-// CARP ? Might need to pipeline this myself, currently exists as separate tools and description of workflow.
-// MGEScan-non-ltr
 
 /*
- * Homology based repeat finders
- */
-
-// Repeat masker
-
-/*
- * LTR finders
- */
-
-
-// LTR_harvest + digest // See ltr_retriever paper for "good" parameters
-// LTR_retriever post-processor for ltr_harvest. Possibly need to exclude
-// because of dependence on RepeatMasker? Might be tricky to get running.
-
-// LTR_detector
-// Doesn't seem to find many in stago?
-/*
-process runLtrDetector {
-    label "ltrdetector"
-
-    """
-    # Split multifasta into directory with one chrom per file
-
-    LtrDetector \
-        -fasta fasta_dir/ \
-        -destDir output_dir \
-        -id 70 \
-        -nThreads ${task.cpus} \
-        -nested
-    """
-}
-*/
-
-/*
-process processLtrDetectorResults {
-
-    """
-    Combine bed-like files.
-    """
-}
-*/
-
-/*
- * SINE finders
- */
-
-// SINE_Scan
-
-
-/*
- * MITE finders
- */
-
-/*
- * MITEfinderII
+ * LTRDigest
+ * doi: 10.1093/nar/gkp759
  *
- * TODO: Factor out "pattern_scoring.txt" as input parameter.
- * Can't see a way to make default to environment variable in docker image.
- * Possibly redistribute with pipeline?
+ * TODO: filter out incomplete LTRs?
+ * This should remove many false positives, but might might exclude things.
  */
-/*
-process runMiteFinder {
-    label "mitefinder"
-    tag { name }
+process runLtrDigest {
+
+    label "genometools"
+    label "small_task"
+
+    tag "${name}"
 
     input:
-    set val(name), file(genome) from genomes4MiteFinder
+    set val(name),
+        file(fasta),
+        file("*"),
+        file("${name}_ltrharvest.gff3"),
+        file("hmms/*hmm") from ltrHarvestResults
+            .combine(fixedLtrHMMs.toList())
+
+    script:
+    """
+    mkdir -p tmp
+    TMPDIR="\${PWD}/tmp" \
+    gt -j "${task.cpus}" ltrdigest \
+      -hmms hmms/*hmm \
+      -outfileprefix "${name}_ltrdigest" \
+      -matchdescstart \
+      -seqfile "${fasta}" \
+      "${name}_ltrharvest.gff3" \
+    > ltrdigest.gff3
+
+    rm -rf -- tmp
+    """
+}
+
+
+/*
+ * EAHelitron
+ * doi: 10.1186/s12859-019-2945-8
+ * url: https://github.com/dontkme/EAHelitron
+ *
+ * TODO: compare performance with HelitronScanner.
+ * Fungal helitrons might have non-standard motifs.
+ * Parallel version doesn't support all arguments that the single core version does.
+ * See doi: 10.1186/s13100-016-0083-7
+ */
+process runEAHelitron {
+
+    label "eahelitron"
+    label "small_task"
+    tag "${name}"
+
+    input:
+    set val(name), file(fasta) from genomes4RunEAHelitron
 
     output:
-    set val(name), file("mf.fasta") into miteFinderFasta
+    file "${name}.3.txt"
+    file "${name}.5.txt"
+    file "${name}.5.fa"
+    file "${name}.u*.fa"
+    file "${name}.d*.fa"
+    file "${name}.gff3"
+    file "${name}.bed"
+    file "${name}.len.txt"
+
+    script:
+    three_prime_fuzzy_level = 4
+    upstream_length = 3000 // default
+    downstream_length = 500 // default
 
     """
-    miteFinder \
-      -input ${genome} \
-      -output mf.fasta \
-      -pattern_scoring /opt/mitefinder/profile/pattern_scoring.txt \
-      -threshold 0.5
+    # -p "${task.cpus}"
+
+    EAHelitron \
+      -o "${name}" \
+      -r "${three_prime_fuzzy_level}" \
+      -u "${upstream_length}" \
+      -d "${downstream_length}" \
+      "${fasta}"
     """
 }
-*/
+
 
 /*
-process processMiteFinder {
-    label "python3"
-    tag { name }
-
-    // Convert fasta into bed or gff.
-}
-*/
-
-// MITEHunter
-
-/*
- * Helitron finders
-
-// HelitronScanner
-// Todo, parse outputs into gff or bed-like file.
-// look at adding new regular expressions to lcvs files.
-// Figure out how to specify path of .jar archive
-// (probably set environment variable?)
+ * HelitronScanner
+ * doi: 10.1073/pnas.1410068111
+ * url: https://sourceforge.net/projects/helitronscanner/
+ *
+ * Todo, parse outputs into gff or bed-like file.
+ * look at adding new regular expressions to lcvs files.
+ * Figure out how to specify path of .jar archive
+ * (probably set environment variable?)
 process runHelitronScanner {
+
     label "helitronscanner"
+    label "small_task"
 
     input:
     set val(name), file(genome) from genomes4HelitronScanner
-    set file("heads.lcvs"), file("tails.lcvs") from 
+    set file("heads.lcvs"), file("tails.lcvs") from
 
     output:
     set val(name), file("${genome.baseName}_fwd_pairs.txt"),
@@ -585,6 +786,38 @@ process runHelitronScanner {
     """
 }
  */
+
+
+/*
+ * MITEfinderII
+ * doi: 10.1186/s12920-018-0418-y
+ * url: https://github.com/screamer/miteFinder
+ *
+ * Compare performance with MiteTracker if can resolve the lousy install process.
+ */
+process runMiteFinder {
+    label "mitefinder"
+    tag { name }
+
+    input:
+    set val(name), file(genome) from genomes4MiteFinder
+    file "pattern_scoring.txt" from miteFinderProfiles
+
+    output:
+    set val(name), file("${name}_mitefinder.fasta") into miteFinderFasta
+
+    script:
+    threshold = 0.5
+
+    """
+    miteFinder \
+      -input "${genome}" \
+      -output "${name}_mitefinder.fasta" \
+      -pattern_scoring pattern_scoring.txt \
+      -threshold "${threshold}"
+    """
+}
+
 
 /*
  * Combine and remove redundancy.
