@@ -45,9 +45,12 @@ params.rfam = false
 params.rfam_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz"
 params.rnammer = false
 
-params.ltr_hmms = false
+params.protein_families = false
+
+params.pfam = false
+params.gypsydb = false
 params.gypsydb_url = "http://gydb.org/gydbModules/collection/collection/db/GyDB_collection.zip"
-params.pfam_ltr_ids = "$baseDir/data/pfam_ltr_domains.txt"
+params.pfam_ids = "$baseDir/data/pfam_ids.txt"
 
 
 if ( params.genomes ) {
@@ -68,11 +71,11 @@ if ( params.repbase ) {
 }
 
 
-if ( params.pfam_ltr_ids ) {
+if ( params.pfam_ids ) {
     Channel
-        .fromPath(params.pfam_ltr_ids, checkIfExists: true, type: "file")
+        .fromPath(params.pfam_ids, checkIfExists: true, type: "file")
         .first()
-        .set { pfamLtrIds }
+        .set { pfamIds }
 } else {
     pfamLtrIds = Channel.empty()
 }
@@ -106,11 +109,58 @@ if ( params.rfam ) {
 }
 
 
-if ( params.ltr_hmms ) {
+if ( params.pfam ) {
     Channel
-        .fromPath( params.ltr_hmms, checkIfExists: true, type: "file")
+        .fromPath( params.pfam, checkIfExists: true, type: "file")
+        .collectFile(name: "pfam.stk", newLine: true)
+        .set { pfamMSAs }
+} else {
+
+    process getPfam {
+
+        label "download"
+        label "small_task"
+
+        publishDir "${params.outdir}/downloads"
+
+        input:
+        file "pfam_ids.txt" from pfamIds
+
+        output:
+        file "pfam.stk" into pfamMSAs
+
+        script:
+        """
+        mkdir -p pfam
+        cd pfam
+
+        cat ../pfam_ids.txt \
+        | xargs \
+            -n 1 \
+            -P "${task.cpus}" \
+            -I "{}" \
+            -- \
+            wget \
+              --no-check-certificate \
+              -c \
+              -O "{}.stk.gz" \
+              "https://pfam.xfam.org/family/{}/alignment/full/gzipped"
+
+        gunzip *.gz
+        cd ..
+        cat pfam/* > pfam.stk
+        rm -rf -- pfam
+        """
+    }
+
+}
+
+if ( params.gypsydb ) {
+    Channel
+        .fromPath( params.gypsydb, checkIfExists: true, type: "file")
         .collect()
-        .set { ltrHMMs }
+        .set { gypsydb }
+
 } else {
 
     process getGypsyDB {
@@ -121,48 +171,46 @@ if ( params.ltr_hmms ) {
         publishDir "${params.outdir}/downloads"
 
         output:
-        file "gypsydb/*" into gypsydbHMMs
+        file "gypsydb/*" into gypsydb
 
         script:
         """
+        mkdir gypsydb
         wget -O gypsy.zip "${params.gypsydb_url}"
         unzip gypsy.zip
-        mv GyDB*/profiles ./gypsydb
+        mv GyDB*/alignments/*.sto ./gypsydb
         rm -rf -- GyDB*
         """
     }
-
-
-    process getPfamHmms {
-
-        label "download"
-        label "small_task"
-
-        publishDir "${params.outdir}/downloads"
-
-        input:
-        file "pfam_ids.txt" from pfamLtrIds
-
-        output:
-        file "pfam_ltrs/*" into pfamLtrHMMs mode flatten
-
-        script:
-        """
-        mkdir -p pfam_ltrs
-
-          cat pfam_ids.txt \
-        | xargs \
-            -n 1 \
-            -P "${task.cpus}" \
-            -I "{}" \
-            -- \
-            wget --no-check-certificate -P pfam_ltrs "https://pfam.xfam.org/family/{}/hmm"
-        """
-    }
-
-    gypsydbHMMs.mix(pfamLtrHMMs).collect().set { ltrHMMs }
 }
 
+process processGydb {
+
+    label "posix"
+    label "small_task"
+
+    input:
+    file "stk/*" from gypsydb
+
+    output:
+    file "gypsydb.stk" into gypsyDBMSAs
+
+    script:
+    """
+    touch gypsydb.stk
+    for f in stk/*;
+    do
+      if grep -q "#=GF ID"
+      then
+        cat "\${f}" >> gypsydb.stk
+      else
+        # Strips directory and extension
+        FILENAME=\$(basename \${f%.*})
+        sed "1a #=GF ID \${FILENAME}" "\${f}" >> gypsydb.stk
+      fi
+    done
+    """
+}
 
 if ( params.mitefinder_profiles ) {
     Channel
@@ -193,7 +241,9 @@ genomes.into {
     genomes4RunRNAmmer;
     genomes4RunOcculterCut;
     genomes4RunRepeatMaskerRepbase;
-    genomes4RunRepeatModeller;
+    genomes4RunRepeatModeler;
+    genomes4GetMMSeqsGenomes;
+    genomes4GetGtSuffixArrays;
     genomes4RunLtrHarvest;
     genomes4RunEAHelitron;
     genomes4MiteFinder;
@@ -227,10 +277,11 @@ process runTRNAScan {
         file("${name}_trnascan.txt"),
         file("${name}_trnascan_ss.txt") into tRNAScanResults
 
+    set val(name), file("${name}_trnascan.fasta") into tRNAScanSeqs
+
     file "${name}_trnascan_iso.txt"
     file "${name}_trnascan_stats.txt"
     file "${name}_trnascan.bed"
-    file "${name}_trnascan.fasta"
 
     script:
     """
@@ -307,7 +358,7 @@ process runStructRNAFinder {
 
     publishDir "${params.outdir}/noncoding/${name}"
 
-    tag { name }
+    tag "${name}"
 
     when:
     params.structrnafinder
@@ -454,24 +505,24 @@ process runOcculterCut {
 
 
 /*
- * RepeatModeller
+ * RepeatModeler
  * url: http://www.repeatmasker.org/RepeatModeler/
  */
-process runRepeatModeller {
+process runRepeatModeler {
 
     label "repeatmasker"
-    label "medium_task"
+    label "big_task"
+
     tag "${name}"
-    publishDir "${params.outdir}/repeatmodeller"
+    publishDir "${params.outdir}/tes/${name}"
 
     input:
-    set val(name), file(fasta) from genomes4RunRepeatModeller
+    set val(name), file(fasta) from genomes4RunRepeatModeler
     file "rmlib" from repbase
 
     output:
-    file "${name}_repeatmodeller_consensus.fasta"
-    set val(name),
-        file("${name}_repeatmodeller_msa.stk") into repeatModellerResults
+    set val(name), file("${name}_repeatmodeler_msa.stk") into repeatModelerSeqs
+    file "${name}_repeatmodeler_consensus.fasta"
 
     script:
     """
@@ -481,10 +532,129 @@ process runRepeatModeller {
     BuildDatabase -name "${name}" -engine ncbi "${fasta}"
 
     # Can we split this over scaffolds?
-    RepeatModeler -engine ncbi -pa ${task.cpus} -database ${name} >& run.out
+    RepeatModeler -engine ncbi -pa "${task.cpus - 1}" -database "${name}" >& run.out
 
-    mv "${name}-families.fa" "${name}_repeatmodeller_consensus.fasta"
-    mv "${name}-families.stk" "${name}_repeatmodeller_msa.stk"
+    mv "${name}-families.fa" "${name}_repeatmodeler_consensus.fasta"
+    mv "${name}-families.stk" "${name}_repeatmodeler_msa.stk"
+    """
+}
+
+
+process getRepeatModelerFasta {
+
+    label "python3"
+    label "small_task"
+    tag "${name}"
+    publishDir "${params.outdir}/tes/${name}"
+
+    input:
+    set val(name), file(stk) from repeatModelerSeqs
+
+    output:
+    set val(name), file("${name}_repeatmodeler.fasta") into repeatModelerFasta
+
+    script:
+    """
+    stk2fasta.py -o "${name}_repeatmodeler.fasta" "${stk}"
+    """
+}
+
+
+process getMMSeqsGenomes {
+
+    label "mmseqs"
+    label "small_task"
+
+    tag "${name}"
+
+    input:
+    set val(name), file(fasta) from genomes4GetMMSeqsGenomes
+
+    output:
+    set val(name), file("genome") into mmseqsGenomes
+
+    script:
+    """
+    mkdir genome tmp
+    mmseqs createdb "${fasta}" genome/db --dont-split-seq-by-len
+    mmseqs createindex genome/db tmp --threads "${task.cpus}" --search-type 2
+
+    rm -rf -- tmp
+    """
+}
+
+
+process getMMSeqsProfiles {
+
+    label "mmseqs"
+    label "medium_task"
+
+    tag "${db}"
+
+    input:
+    set val(db), file("msas.stk") from pfamMSAs.map { ["pfam", it] }
+        .mix(gypsyDBMSAs.map { ["gypsydb", it] })
+
+    output:
+    set val(db), file("profiles") into mmseqsProfiles
+
+    script:
+    id_field = db == "pfam" ? "1" : "0"
+
+    """
+    mkdir msas profiles tmp
+    mmseqs convertmsa msas.stk msas/db --identifier-field "${id_field}"
+
+    mmseqs msa2profile msas/db profiles/db --match-mode 1 --match-ratio 0.5 --threads "${task.cpus}"
+    mmseqs createindex profiles/db tmp -k 6 -s 7 --threads "${task.cpus}"
+
+    rm -rf -- tmp msas
+    """
+}
+
+
+process searchProfilesVsGenomes {
+
+    label "mmseqs"
+    label "medium_task"
+
+    tag "${name} - ${db}"
+    publishDir "${params.outdir}/proteins/${name}"
+
+    input:
+    set val(name), file("genome"), val(db), file("profiles") from mmseqsGenomes.combine(mmseqsProfiles)
+
+    output:
+    set val(name), val(db), file("${name}_${db}_search.tsv")
+
+    script:
+    """
+    mkdir search tmp
+    mmseqs search \
+      profiles/db \
+      genome/db \
+      search/db \
+      tmp \
+      --threads "${task.cpus}" \
+      -e 1 \
+      -s 7 \
+      --num-iterations 2 \
+      --min-length 10 \
+      --mask 0 \
+      --realign \
+      --orf-start-mode 1
+
+    mmseqs convertalis \
+      profiles/db \
+      genome/db \
+      search/db \
+      search_tmp.tsv \
+      --threads "${task.cpus}" \
+      --format-mode 0 \
+      --format-output 'target,query,tstart,tend,tlen,qstart,qend,qlen,evalue,gapopen,pident,alnlen,raw,bits,cigar,mismatch,qcov,tcov'
+
+    sort -k1,1 -k3,3n -k4,4n -k2,2 search_tmp.tsv > "${name}_${db}_search.tsv"
+    sed -i '1i #target\tquery\ttstart\ttend\ttlen\tqstart\tqend\tqlen\tevalue\tgapopen\tpident\talnlen\traw\tbits\tcigar\tmismatch\tqcov\ttcov' "${name}_${db}_search.tsv"
     """
 }
 
@@ -492,7 +662,6 @@ process runRepeatModeller {
 /*
  * RepeatMasker
  * url: http://www.repeatmasker.org/RMDownload.html
- */
 process runRepeatMaskerRepbase {
 
     label "repeatmasker"
@@ -520,13 +689,13 @@ process runRepeatMaskerRepbase {
       "${fasta}"
     """
 }
+ */
 
 
 /*
- * LTRHarvest
- * doi: 10.1186/1471-2105-9-18
+ * Both ltrharvest and ltrdigest use these suffix arrays
  */
-process runLtrHarvest {
+process getGtSuffixArrays {
 
     label "genometools"
     label "small_task"
@@ -534,13 +703,14 @@ process runLtrHarvest {
     tag "${name}"
 
     input:
-    set val(name), file(fasta) from genomes4RunLtrHarvest
+    set val(name), file(fasta) from genomes4GetGtSuffixArrays
 
     output:
-    set val(name), file(fasta), file("${fasta}*"), file("${name}_ltrharvest.gff3") into ltrHarvestResults
-    set val(name), file("${name}_ltrharvest.fasta")
-    set val(name), file("${name}_ltrharvest_inner.fasta")
+    set val(name),
+        file(fasta),
+        file("${fasta}*") into gtSuffixArrays
 
+    script:
     """
     # Create the suffix arrays
     gt suffixerator \
@@ -554,9 +724,49 @@ process runLtrHarvest {
       -ssp \
       -sds \
       -dna
+    """
+}
 
+gtSuffixArrays.into {
+    gtSuffixArrays4RunLtrHarvest;
+    gtSuffixArrays4RunLtrDigest;
+}
+
+
+/*
+ * LTRHarvest
+ * doi: 10.1186/1471-2105-9-18
+ *
+ * We may need to split this into two commands
+ * 1 to find recent ones, and 1 to find old ones.
+ * The options '-motif tgca' is usually used for canonical ones.
+ */
+process runLtrHarvest {
+
+    label "genometools"
+    label "small_task"
+
+    tag "${name}"
+    publishDir "${params.outdir}/tes/${name}"
+
+    input:
+    set val(name), file(fasta), file("*") from gtSuffixArrays4RunLtrHarvest
+
+    output:
+    set val(name), file("${name}_ltrharvest.gff3") into ltrHarvestResults
+    set val(name), file("${name}_ltrharvest.fasta")
+    set val(name), file("${name}_ltrharvest_inner.fasta")
+
+    """
     gt ltrharvest \
       -seqids yes \
+      -similar 85 \
+      -vic 10 \
+      -seed 20 \
+      -minlenltr 100 \
+      -maxlenltr 7000 \
+      -mintsd 4 \
+      -maxtsd 6 \
       -index "${fasta}" \
       -gff3 "${name}_ltrharvest_tmp.gff3" \
       -out "${name}_ltrharvest.fasta" \
@@ -573,33 +783,6 @@ process runLtrHarvest {
 
 
 /*
- * HMMs from gypsydb are in HMMER2 format, we just convert all to the
- * version of hmmer we're using.
- */
-process fixLtrHMMs {
-
-    label "hmmer3"
-    label "small_task"
-
-    input:
-    file "in/*" from ltrHMMs.collect()
-
-    output:
-    file "out/*" into fixedLtrHMMs
-
-    script:
-    """
-    mkdir -p out
-
-    for f in in/*;
-    do
-        hmmconvert "\${f}" > "out/\$(basename \${f})"
-    done
-    """
-}
-
-
-/*
  * LTRDigest
  * doi: 10.1093/nar/gkp759
  *
@@ -610,28 +793,45 @@ process runLtrDigest {
 
     label "genometools"
     label "small_task"
-
     tag "${name}"
+    publishDir "${params.outdir}/tes/${name}"
 
     input:
     set val(name),
         file(fasta),
         file("*"),
         file("${name}_ltrharvest.gff3"),
-        file("hmms/*hmm") from ltrHarvestResults
-            .combine(fixedLtrHMMs.toList())
+        file("trna.fasta") from gtSuffixArrays4RunLtrDigest
+            .combine(ltrHarvestResults, by: 0)
+            .combine(tRNAScanSeqs, by: 0)
+
+    output:
+    set val(name), file("${name}_ltrdigest_complete.fas") into ltrDigestSeqs
+    file "${name}_ltrdigest.gff3"
+    file "${name}_ltrdigest_3ltr.fas"
+    file "${name}_ltrdigest_5ltr.fas"
+    file "${name}_ltrdigest_conditions.csv"
+    file "${name}_ltrdigest_ppt.fas" optional true
+    file "${name}_ltrdigest_tabout.csv"
 
     script:
     """
     mkdir -p tmp
     TMPDIR="\${PWD}/tmp" \
     gt -j "${task.cpus}" ltrdigest \
-      -hmms hmms/*hmm \
+      -trnas trna.fasta \
       -outfileprefix "${name}_ltrdigest" \
       -matchdescstart \
       -seqfile "${fasta}" \
       "${name}_ltrharvest.gff3" \
-    > ltrdigest.gff3
+    > "${name}_ltrdigest_tmp.gff3"
+
+    gt gff3 \
+      -tidy \
+      -sort \
+      -retainids \
+      "${name}_ltrdigest_tmp.gff3" \
+    > "${name}_ltrdigest.gff3"
 
     rm -rf -- tmp
     """
@@ -653,19 +853,20 @@ process runEAHelitron {
     label "eahelitron"
     label "small_task"
     tag "${name}"
+    publishDir "${params.outdir}/tes/${name}"
 
     input:
     set val(name), file(fasta) from genomes4RunEAHelitron
 
     output:
-    file "${name}.3.txt"
-    file "${name}.5.txt"
-    file "${name}.5.fa"
-    file "${name}.u*.fa"
-    file "${name}.d*.fa"
-    file "${name}.gff3"
-    file "${name}.bed"
-    file "${name}.len.txt"
+    set val(name), file("${name}_eahelitron.5.fa") into eaHelitronSeqs
+    file "${name}_eahelitron.3.txt"
+    file "${name}_eahelitron.5.txt"
+    file "${name}_eahelitron.u*.fa"
+    file "${name}_eahelitron.d*.fa"
+    file "${name}_eahelitron.gff3"
+    file "${name}_eahelitron.bed"
+    file "${name}_eahelitron.len.txt"
 
     script:
     three_prime_fuzzy_level = 4
@@ -676,7 +877,7 @@ process runEAHelitron {
     # -p "${task.cpus}"
 
     EAHelitron \
-      -o "${name}" \
+      -o "${name}_eahelitron" \
       -r "${three_prime_fuzzy_level}" \
       -u "${upstream_length}" \
       -d "${downstream_length}" \
@@ -797,7 +998,9 @@ process runHelitronScanner {
  */
 process runMiteFinder {
     label "mitefinder"
+    label "small_task"
     tag { name }
+    publishDir "${params.outdir}/tes/${name}"
 
     input:
     set val(name), file(genome) from genomes4MiteFinder
@@ -820,11 +1023,77 @@ process runMiteFinder {
 
 
 /*
- * Combine and remove redundancy.
- * Meshclust looks like good tool for clustering, (alternative to cdhit-cdna)
- * Possibly need to look at overlapping genomic annotations?
- * Filtering out false positives? negative Database matches?
+ * This just concatenates all fasta files, removes exact duplicates and
+ * gives all sequences an unique id.
  */
+process combineTEPredictions {
+
+    label "seqrenamer"
+    label "small_task"
+
+    publishDir "${params.outdir}/pantes"
+
+    input:
+    file "in/*.fasta" from repeatModelerFasta
+        .mix(ltrDigestSeqs, eaHelitronSeqs, miteFinderFasta)
+        .map { n, f -> f }
+        .collect()
+
+    output:
+    file "combined_tes.fasta" into combinedSeqs
+    file "combined_tes.tsv"
+
+    script:
+    """
+    sr encode \
+      --format fasta \
+      --column id \
+      --deduplicate \
+      --upper \
+      --drop-desc \
+      --map "combined_tes.tsv" \
+      --outfile "combined_tes.fasta" \
+      in/*fasta
+    """
+}
+
+
+/*
+ * usearch
+ * doi: 10.7717/peerj.2584
+ * url: https://github.com/torognes/vsearch
+ *
+ * Cluster to find naive families.
+ */
+process clusterSeqs {
+
+    label "vsearch"
+    label "medium_task"
+
+    publishDir "${params.outdir}/pantes"
+
+    input:
+    file "combined.fasta" from combinedSeqs
+
+    output:
+    file "clusters" into clusteredSeqs
+    file "clusters.tsv"
+
+    script:
+    """
+    mkdir -p clusters
+    vsearch \
+      --threads "${task.cpus}" \
+      --cluster_fast "combined.fasta" \
+      --id 0.8 \
+      --weak_id 0.7 \
+      --iddef 0 \
+      --qmask none \
+      --uc clusters.tsv \
+      --strand "both" \
+      --clusters "clusters/fam"
+    """
+}
 
 
 /*
@@ -835,3 +1104,27 @@ process runMiteFinder {
  * Maybe fp is first step is to exclude members of clusters,
  *  whereas here it is to exclude entire clusters?
  */
+process clusterMSAs {
+
+    label "decipher"
+    label "big_task"
+
+    publishDir "${params.outdir}/pantes"
+
+    input:
+    file "clusters" from clusteredSeqs
+
+    output:
+    file "msas" into clusterAlignments
+
+    script:
+    """
+    mkdir -p msas
+
+    find clusters/ -name "fam*" -printf '%f\\0' \
+    | xargs -0 -P "${task.cpus}" -I {} -- \
+        run_decipher.R \
+          --infile "clusters/{}" \
+          --outfile "msas/{}"
+    """
+}

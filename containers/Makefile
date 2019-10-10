@@ -19,6 +19,10 @@ GFFPAL_TAG=v0.0.2
 GFFPAL_REPO=https://github.com/darcyabjones/gffpal.git
 GFFPAL_PREFIX_ARG=$(INSTALL_BASE)/gffpal/$(GFFPAL_TAG)
 
+SEQRENAMER_TAG=v0.0.1
+SEQRENAMER_REPO=https://github.com/darcyabjones/seqrenamer.git
+SEQRENAMER_PREFIX_ARG=$(INSTALL_BASE)/seqrenamer/$(SEQRENAMER_TAG)
+
 RMBLAST_VERSION=2.9.0+
 RMBLAST_URL=ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.9.0/ncbi-blast-2.9.0+-src.tar.gz
 RMBLAST_PATCH_URL=http://www.repeatmasker.org/isb-2.9.0+-rmblast.patch.gz
@@ -52,6 +56,9 @@ HMMER3_VERSION=3.2.1
 HMMER3_URL=http://eddylab.org/software/hmmer/hmmer-3.2.1.tar.gz
 HMMER3_PREFIX_ARG=$(INSTALL_BASE)/hmmer3/$(HMMER3_VERSION)
 
+MMSEQS_TAG=9-d36de
+MMSEQS_REPO=https://github.com/soedinglab/MMseqs2.git
+MMSEQS_PREFIX_ARG=$(INSTALL_BASE)/mmseqs/$(MMSEQS_TAG)
 
 INFERNAL_VERSION=1.1.2
 INFERNAL_URL=http://eddylab.org/infernal/infernal-1.1.2.tar.gz
@@ -95,6 +102,16 @@ EAHELITRON_COMMIT=c4c3dca
 EAHELITRON_REPO=https://github.com/dontkme/EAHelitron.git
 EAHELITRON_PREFIX_ARG=$(INSTALL_BASE)/eahelitron/$(EAHELITRON_COMMIT)
 
+
+VSEARCH_VERSION=2.14.1
+VSEARCH_URL=https://github.com/torognes/vsearch/archive/v2.14.1.tar.gz
+VSEARCH_PREFIX_ARG=$(INSTALL_BASE)/vsearch/$(VSEARCH_VERSION)
+
+DECIPHER_VERSION=2.10.0
+DECIPHER_URL=http://www2.decipher.codes/DECIPHER_2.10.0.tar.gz
+DECIPHER_PREFIX_ARG=$(INSTALL_BASE)/decipher/$(DECIPHER_VERSION)
+
+
 # Downloads
 
 RM_LIB_ARG=/data/rmlib
@@ -107,9 +124,9 @@ REPBASE_URL=http://www.girinst.org/server/RepBase/protected/repeatmaskerlibrarie
 REPBASE_USERNAME:=
 REPBASE_PASSWORD:=
 
-GENERAL=genometools python3 posix gffpal
+GENERAL=genometools python3 posix gffpal seqrenamer
 NONCODING=aragorn structrnafinder trnascan
-ALIGNMENT=rmblast
+ALIGNMENT=rmblast vsearch decipher mmseqs
 ANNOTATION=repeatmasker eahelitron mitefinder
 PROPRIETARY=rnammer
 
@@ -249,6 +266,22 @@ docker/gffpal: gffpal.Dockerfile docker/base
 	@touch $@
 
 
+docker/seqrenamer: seqrenamer.Dockerfile docker/base docker/gffpal
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg GFFPAL_IMAGE="$(call make_image_name,gffpal)" \
+	  --build-arg SEQRENAMER_TAG="$(SEQRENAMER_TAG)" \
+	  --build-arg SEQRENAMER_REPO="$(SEQRENAMER_REPO)" \
+	  --build-arg SEQRENAMER_PREFIX_ARG="$(SEQRENAMER_PREFIX_ARG)" \
+	  --build-arg GFFPAL_TAG="$(GFFPAL_TAG)" \
+	  --build-arg GFFPAL_PREFIX_ARG="$(GFFPAL_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
 # Repeat masking stuff
 
 
@@ -271,6 +304,32 @@ docker/eahelitron: eahelitron.Dockerfile docker/base
 	  --build-arg EAHELITRON_COMMIT="$(EAHELITRON_COMMIT)" \
 	  --build-arg EAHELITRON_REPO="$(EAHELITRON_REPO)" \
 	  --build-arg EAHELITRON_PREFIX_ARG="$(EAHELITRON_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/vsearch: vsearch.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg VSEARCH_VERSION="$(VSEARCH_VERSION)" \
+	  --build-arg VSEARCH_URL="$(VSEARCH_URL)" \
+	  --build-arg VSEARCH_PREFIX_ARG="$(VSEARCH_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/decipher: decipher.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg DECIPHER_VERSION="$(DECIPHER_VERSION)" \
+	  --build-arg DECIPHER_URL="$(DECIPHER_URL)" \
+	  --build-arg DECIPHER_PREFIX_ARG="$(DECIPHER_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -409,6 +468,19 @@ docker/hmmer3: hmmer3.Dockerfile docker/base
 	@touch $@
 
 
+docker/mmseqs: mmseqs.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg MMSEQS_TAG="$(MMSEQS_TAG)" \
+	  --build-arg MMSEQS_REPO="$(MMSEQS_REPO)" \
+	  --build-arg MMSEQS_PREFIX_ARG="$(MMSEQS_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
 docker/hmmer2: hmmer2.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
@@ -435,6 +507,23 @@ docker/rnammer: rnammer.Dockerfile docker/base docker/hmmer2
 	  .
 	@mkdir -p "$(dir $@)"
 	@touch $@
+
+docker/pante: pante.Dockerfile docker/python3 docker/mmseqs docker/decipher
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg PYTHON3_IMAGE="$(call make_image_name,python3)" \
+	  --build-arg MMSEQS_IMAGE="$(call make_image_name,mmseqs)" \
+	  --build-arg MMSEQS_TAG="$(MMSEQS_TAG)" \
+	  --build-arg MMSEQS_PREFIX_ARG="$(MMSEQS_PREFIX_ARG)" \
+	  --build-arg DECIPHER_IMAGE="$(call make_image_name,decipher)" \
+	  --build-arg DECIPHER_VERSION="$(DECIPHER_VERSION)" \
+	  --build-arg DECIPHER_PREFIX_ARG="$(DECIPHER_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
 
 
 downloads/Dfam.hmm.gz:
