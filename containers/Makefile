@@ -60,6 +60,10 @@ MMSEQS_TAG=9-d36de
 MMSEQS_REPO=https://github.com/soedinglab/MMseqs2.git
 MMSEQS_PREFIX_ARG=$(INSTALL_BASE)/mmseqs/$(MMSEQS_TAG)
 
+FFDB_TAG=db9d8a5
+FFDB_REPO=https://github.com/darcyabjones/ffdb.git
+FFDB_PREFIX_ARG=$(INSTALL_BASE)/ffdb/$(FFDB_TAG)
+
 INFERNAL_VERSION=1.1.2
 INFERNAL_URL=http://eddylab.org/infernal/infernal-1.1.2.tar.gz
 INFERNAL_PREFIX_ARG=$(INSTALL_BASE)/infernal/$(INFERNAL_VERSION)
@@ -124,8 +128,8 @@ REPBASE_URL=http://www.girinst.org/server/RepBase/protected/repeatmaskerlibrarie
 REPBASE_USERNAME:=
 REPBASE_PASSWORD:=
 
-GENERAL=genometools python3 posix gffpal seqrenamer
-NONCODING=aragorn structrnafinder trnascan
+GENERAL=base genometools python3 gffpal seqrenamer
+NONCODING=infernal trnascan occultercut
 ALIGNMENT=rmblast vsearch decipher mmseqs
 ANNOTATION=repeatmasker eahelitron mitefinder
 PROPRIETARY=rnammer
@@ -217,16 +221,6 @@ docker/base: base.Dockerfile
 
 
 docker/python3: python3.Dockerfile docker/base
-	docker build \
-	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
-
-
-docker/posix: posix.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
 	  --file $< \
@@ -468,12 +462,28 @@ docker/hmmer3: hmmer3.Dockerfile docker/base
 	@touch $@
 
 
-docker/mmseqs: mmseqs.Dockerfile docker/base
+docker/ffdb: ffdb.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg FFDB_TAG="$(FFDB_TAG)" \
+	  --build-arg FFDB_REPO="$(FFDB_REPO)" \
+	  --build-arg FFDB_PREFIX_ARG="$(FFDB_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/mmseqs: mmseqs.Dockerfile docker/base docker/ffdb
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
 	  --build-arg MMSEQS_TAG="$(MMSEQS_TAG)" \
 	  --build-arg MMSEQS_REPO="$(MMSEQS_REPO)" \
 	  --build-arg MMSEQS_PREFIX_ARG="$(MMSEQS_PREFIX_ARG)" \
+	  --build-arg FFDB_IMAGE="$(call make_image_name,ffdb)" \
+	  --build-arg FFDB_TAG="$(FFDB_TAG)" \
+	  --build-arg FFDB_PREFIX_ARG="$(FFDB_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .

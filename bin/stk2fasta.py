@@ -46,9 +46,6 @@ def main():
     i = 1
     for alignment in alignments:
         for seq in alignment:
-            seq.id = f"seq{i}"
-            seq.name = f"seq{i}"
-            seq.description = f"seq{i}"
             seq.seq = seq.seq.ungap()
             seqs.append(seq)
             i += 1
