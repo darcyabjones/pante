@@ -33,13 +33,29 @@ if (params.help) {
 
 
 params.genomes = false
-params.repbase = false
-params.rmspecies = "fungi"
-params.helitronscanner_heads = "$baseDir/data/helitronscanner_head.lcvs"
-params.helitronscanner_tails = "$baseDir/data/helitronscanner_tail.lcvs"
 
+// RepeatMasker config
+params.repbase = false
+params.rm_meta = false
+
+params.dfam_hmm = false
+params.dfam_hmm_url = "http://dfam.org/releases/current/families/Dfam.hmm.gz"
+
+params.dfam_embl = false
+params.dfam_embl_url = "http://dfam.org/releases/current/families/Dfam.embl.gz"
+
+params.rm_repeatpeps = false
+params.rm_species = false
+
+// Mitefinder comes with a set of profiles to use for searching.
+// We can fetch this from the installation directory in the containers.
+// But if you aren't using the containers or want to use a different
+// set of profiles use this.
 params.mitefinder_profiles = false
 
+// Infernal takes quite a long time to run and tRNAscan and RNAmmer cover
+// a lot of what we want it for. So option is offered to disable it.
+params.noinfernal = false
 params.rfam = false
 params.rfam_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz"
 params.rfam_clanin = false
@@ -56,6 +72,9 @@ params.protein_families = "$baseDir/data/proteins/families.stk"
 
 params.trans_table = 1
 
+def run_infernal = !params.noinfernal
+
+
 if ( params.genomes ) {
     genomes = Channel
         .fromPath(params.genomes, checkIfExists: true, type: "file")
@@ -67,10 +86,112 @@ if ( params.genomes ) {
 
 
 if ( params.repbase ) {
-    repbase = Channel.fromPath(params.repbase, checkIfExists: true).first()
+    Channel
+        .fromPath(params.repbase, checkIfExists: true, type: "file")
+        .first()
+        .set { repbase }
 } else {
-    log.info "Sorry for now we need repbase"
+    log.error "Sorry for now we need repbase"
     exit 1
+}
+
+if ( params.rm_meta ) {
+    Channel
+        .fromPath(params.rm_meta, checkIfExists: true, type: "file")
+        .first()
+        .set { rmMeta }
+} else {
+    log.error "Please provide the RM meta file corresponding to " +
+              "the repbase release you provided."
+    exit 1
+}
+
+if ( params.dfam_hmm ) {
+
+    Channel
+        .fromPath(params.dfam_hmm, checkIfExists: true, type: "file")
+        .first()
+        .set { dfamHMMs }
+
+} else {
+
+    process getDfamHMMs {
+
+        label "download"
+        label "small_task"
+
+        publishDir "${params.outdir}/downloads"
+
+        output:
+        file "dfam.hmm.gz" into dfamHMMs
+
+        script:
+        """
+        wget \
+          --no-check-certificate \
+          -c \
+          -O dfam.hmm.gz \
+          "${params.dfam_hmm_url}"
+        """
+    }
+}
+
+
+if ( params.dfam_embl ) {
+
+    Channel
+        .fromPath(params.dfam_embl, checkIfExists: true, type: "file")
+        .first()
+        .set { dfamEMBLs }
+
+} else {
+
+    process getDfamEMBLs {
+
+        label "download"
+        label "small_task"
+
+        publishDir "${params.outdir}/downloads"
+
+        output:
+        file "dfam.embl.gz" into dfamEMBLs
+
+        script:
+        """
+        wget \
+          --no-check-certificate \
+          -c \
+          -O dfam.embl.gz \
+          "${params.dfam_embl_url}"
+        """
+    }
+}
+
+
+if ( params.rm_repeatpeps ) {
+
+    Channel
+        .fromPath(params.rm_repeatpeps, checkIfExists: true, type: "file")
+        .first()
+        .set { rmRepeatPeps }
+
+} else {
+
+    process getRMRepeatPeps {
+
+        label "repeatmasker"
+        label "small_task"
+
+        publishDir "${params.outdir}/downloads"
+
+        output:
+        file "RepeatPeps.lib" into rmRepeatPeps
+
+        script:
+        """
+        cp -L "\${RMASK_PREFIX}/RepeatPeps.lib" RepeatPeps.lib
+        """
+    }
 }
 
 
@@ -92,7 +213,16 @@ if ( params.rfam && params.rfam_clanin ) {
         ])
         .set { rfam }
 
-} else {
+} else if ( run_infernal ) {
+
+    /*
+     * Rfam
+     * doi: 10.1093/nar/gkx1038
+     * url: https://rfam.xfam.org/
+     *
+     * Download Rfam to search with infernal.
+     * Contains curated CMs/HMMs of ncRNA families.
+     */
     process getRfam {
 
         label "download"
@@ -110,6 +240,10 @@ if ( params.rfam && params.rfam_clanin ) {
         gunzip Rfam.cm.gz
         """
     }
+} else {
+
+    rfam = Channel.empty()
+
 }
 
 
@@ -120,6 +254,10 @@ if ( params.pfam ) {
         .set { pfamMSAs }
 } else {
 
+    /*
+     * Download a number of Pfam domains and families associated with
+     * TE activity.
+     */
     process getPfam {
 
         label "download"
@@ -152,7 +290,7 @@ if ( params.pfam ) {
 
         gunzip *.gz
         cd ..
-        cat pfam/* > pfam.stk
+        cat pfam/*.stk > pfam.stk
         rm -rf -- pfam
         """
     }
@@ -167,6 +305,15 @@ if ( params.gypsydb ) {
 
 } else {
 
+    /*
+     * GypsyDB
+     *
+     * doi: 10.1093/nar/gkq1061
+     * url: http://www.gydb.org/index.php/Main_Page
+     *
+     * Curated msas and HMMs of many LTR families.
+     * It apparently also contains some DNA elements.
+     */
     process getGypsyDB {
 
         label "download"
@@ -252,7 +399,8 @@ genomes.into {
     genomes4RunStructRNAFinder;
     genomes4RunRNAmmer;
     genomes4RunOcculterCut;
-    genomes4RunRepeatMaskerRepbase;
+    genomes4RunRepeatMaskerSpecies;
+    genomes4RunRepeatMasker;
     genomes4RunRepeatModeler;
     genomes4GetMMSeqsGenomes;
     genomes4TidyMMSeqsGFFs;
@@ -342,10 +490,16 @@ process getTRNAScanGFF {
 }
 
 
+/*
+ * Prepare the Rfam database to search with infernal.
+ */
 process pressRfam {
 
     label "infernal"
     label "small_task"
+
+    when:
+    run_infernal
 
     input:
     set file("Rfam.cm"), file("Rfam.clanin") from rfam
@@ -373,6 +527,9 @@ process chunkifyGenomes {
 
     tag "${name}"
 
+    when:
+    run_infernal
+
     input:
     set val(name),
         file("input.fasta") from genomes4ChunkifyGenomes
@@ -392,6 +549,7 @@ process chunkifyGenomes {
 /*
  * Infernal
  * doi: 10.1093/bioinformatics/btt509
+ * url: http://eddylab.org/infernal/
  *
  * Searches Rfam vs genome.
  * tblout2gff script comes from <https://github.com/nawrockie/jiffy-infernal-hmmer-scripts>
@@ -404,6 +562,9 @@ process runInfernal {
     tag "${name}"
 
     publishDir "${params.outdir}/noncoding/${name}"
+
+    when:
+    run_infernal
 
     input:
     set val(name),
@@ -528,7 +689,7 @@ process runOcculterCut {
 
     output:
     file "${name}_occultercut_regions.gff3"
-    file "${name}_occultercut.png"
+    file "${name}_occultercut.png" optional true
     file "${name}_occultercut_composition_gc.txt"
     file "${name}_occultercut_my_genome.txt"
     file "${name}_occultercut_grouped_regions.gff3" optional true
@@ -538,12 +699,14 @@ process runOcculterCut {
     """
     OcculterCut -f "${fasta}"
 
+    if [ -e plot.plt ]
+    then
+      sed -i '1i set terminal pngcairo size 900,600 enhanced font "Helvetica,20"' plot.plt
+      sed -i '1a set output "plot.png"' plot.plt
+      gnuplot plot.plt
 
-    sed -i '1i set terminal pngcairo size 900,600 enhanced font "Helvetica,20"' plot.plt
-    sed -i '1a set output "plot.png"' plot.plt
-    gnuplot plot.plt
-
-    mv plot.png "${name}_occultercut.png"
+      mv plot.png "${name}_occultercut.png"
+    fi
 
     mv compositionGC.txt "${name}_occultercut_composition_gc.txt"
     mv regions.gff3 "${name}_occultercut_regions.gff3"
@@ -554,10 +717,8 @@ process runOcculterCut {
       mv groupedRegions.gff3 "${name}_occultercut_grouped_regions.gff3"
     fi
 
-    for f in nuc_frequencies.R*
-    do
-      mv "\${f}" "${name}_occultercut_\${f}"
-    done
+    find . -name "nuc_frequences.R*" -printf '%f\\0' \
+    | xargs -I {} -0 -- mv '{}' "${name}_occultercut_{}"
     """
 }
 
@@ -568,8 +729,69 @@ process runOcculterCut {
 
 
 /*
+ * Prepare RepeatMasker database.
+ */
+process prepRepeatMaskerDB {
+
+    label "repeatmasker"
+    label "small_task"
+
+    input:
+    file "repbase.tar.gz" from repbase
+    file "rm_meta.tar.gz" from rmMeta
+    file "Dfam.hmm.gz" from dfamHMMs
+    file "Dfam.embl.gz" from dfamEMBLs
+    file "RepeatPeps.lib" from rmRepeatPeps
+
+    output:
+    file "RMLibrary" into rmlib
+
+    script:
+    """
+    mkdir -p RMLibrary
+
+    # These tar archives unpack to a folder "Libraries"
+    tar zxf "repbase.tar.gz"
+    tar zxf "rm_meta.tar.gz"
+
+    mv Libraries/* RMLibrary
+    rmdir Libraries
+
+    # Repeat peps gets distributed with the repeat masker executables.
+    # Not available elsewhere.
+    cp -L RepeatPeps.lib RMLibrary
+    cp -L Dfam.hmm.gz Dfam.embl.gz RMLibrary
+
+    cd RMLibrary
+
+    gunzip Dfam.hmm.gz
+    # DFAM consensus filenames hard-coded into the script, so we move it.
+    mv Dfam.embl.gz DfamConsensus.embl.gz
+    gunzip DfamConsensus.embl.gz
+
+    # I think this comes with the source, or with meta.
+    gunzip taxonomy.dat.gz
+
+    # This basically concatenates the different blastable (i.e. not hmm) databases together.
+    perl \
+      -I "\${RMASK_PREFIX}" \
+      -e "use LibraryUtils; LibraryUtils::rebuildMainLibrary( \\"../RMLibrary\\" );"
+
+    buildRMLibFromEMBL.pl RepeatMaskerLib.embl > RepeatMasker.lib
+
+    makeblastdb -dbtype nucl -in RepeatMasker.lib
+    makeblastdb -dbtype prot -in RepeatPeps.lib
+
+    # As far as I can tell, nothing needs to be done with dfam hmms?
+    """
+}
+
+/*
  * RepeatModeler
  * url: http://www.repeatmasker.org/RepeatModeler/
+ *
+ * Note that if it doesn't find any families, then
+ * RepeatModeler won't output any files. It has to be optional.
  */
 process runRepeatModeler {
 
@@ -581,24 +803,41 @@ process runRepeatModeler {
 
     input:
     set val(name), file(fasta) from genomes4RunRepeatModeler
-    file "rmlib" from repbase
+    file "rmlib" from rmlib
 
     output:
-    set val(name), file("${name}_repeatmodeler_msa.stk") into repeatModelerSeqs
-    file "${name}_repeatmodeler_consensus.fasta"
+    set val(name),
+        file("${name}_repeatmodeler_msa.stk") optional true into repeatModelerSeqs
+    file "${name}_repeatmodeler_consensus.fasta" optional true
 
     script:
+    // Task uses n+1 threads.
+    def ncpu = task.cpus == 1 ? 1 : task.cpus - 1
     """
-    export RM_LIB="\${PWD}/rmlib"
+    # repeatmasker modifies the content of rmlib.
+    # I'm not sure if repeatmodeler will too, but just to be safe.
+    # We copy it to avoid messing up checkpointing.
+
+    cp -rL rmlib rmlib_tmp
+    export RM_LIB="\${PWD}/rmlib_tmp"
 
     # Where will this be placed?
     BuildDatabase -name "${name}" -engine ncbi "${fasta}"
 
     # Can we split this over scaffolds?
-    RepeatModeler -engine ncbi -pa "${task.cpus - 1}" -database "${name}" >& run.out
+    RepeatModeler -engine ncbi -pa "${ncpu}" -database "${name}" >& run.out
 
-    mv "${name}-families.fa" "${name}_repeatmodeler_consensus.fasta"
-    mv "${name}-families.stk" "${name}_repeatmodeler_msa.stk"
+    if [ -e "${name}-families.fa" ]
+    then
+      mv "${name}-families.fa" "${name}_repeatmodeler_consensus.fasta"
+    fi
+
+    if [ -e "${name}-families.stk" ]
+    then
+      mv "${name}-families.stk" "${name}_repeatmodeler_msa.stk"
+    fi
+
+    rm -rf -- rmlib_tmp
     """
 }
 
@@ -692,7 +931,7 @@ process getMSAAttributes {
 
 
 /*
- * Get msa profile for each family.
+ * Get MSA PSSM profile for each family.
  */
 process getMMSeqsProfiles {
 
@@ -727,6 +966,10 @@ process getMMSeqsProfiles {
 
 
 /*
+ * MMSeqs2
+ * doi: https://www.nature.com/articles/nbt.3988
+ * url: https://github.com/soedinglab/MMseqs2
+ *
  * Search the profiles against the genome orfs.
  * We could potentially look at "enriching" the profiles using extracted orfs.
  * I've tried it, it works, but it requires re-aligning the matching sequences
@@ -1088,114 +1331,12 @@ process runEAHelitron {
 
 
 /*
- * HelitronScanner
- * doi: 10.1073/pnas.1410068111
- * url: https://sourceforge.net/projects/helitronscanner/
- *
- * Todo, parse outputs into gff or bed-like file.
- * look at adding new regular expressions to lcvs files.
- * Figure out how to specify path of .jar archive
- * (probably set environment variable?)
-process runHelitronScanner {
-
-    label "helitronscanner"
-    label "small_task"
-
-    input:
-    set val(name), file(genome) from genomes4HelitronScanner
-    set file("heads.lcvs"), file("tails.lcvs") from
-
-    output:
-    set val(name), file("${genome.baseName}_fwd_pairs.txt"),
-        file("${genome.baseName}_rev_pairs.txt") into helitronScannerLocations
-    set val(name), file("${genome.baseName}_helitrons.fasta") into helitronScannerSeqs
-
-    script:
-    threshold = 5
-    min_size = 200
-    max_size = 50000
-    """
-    java -jar HelitronScanner.jar scanHead \
-      -threads_LCV ${task.cpus} \
-      -buffer_size 0 \
-      -lcv_filepath heads.lcvs \
-      -genome ${genome} \
-      -output fwd_head_positions.txt \
-      -overlap 50 \
-      -threshold 1
-
-    java -jar HelitronScanner.jar scanTail \
-      -threads_LCV ${task.cpus} \
-      -buffer_size 0 \
-      -lcv_filepath tails.lcvs \
-      -genome ${genome} \
-      -output fwd_tail_positions.txt \
-      -overlap 50 \
-      -threshold 1
-
-    java -jar HelitronScanner.jar pairends \
-      -head_score fwd_head_positions.txt \
-      -tail_score fwd_tail_positions.txt \
-      -output "${genome.baseName}_fwd_pairs.txt" \
-      -head_threshold ${threshold} \
-      -tail_threshold ${threshold} \
-      -helitron_len_range ${min_size}:${max_size}
-
-    java -jar HelitronScanner.jar draw \
-      -pscore "${genome.baseName}_fwd_pairs.txt" \
-      -genome ${genome} \
-      -output "${genome.baseName}_fwd" \
-      --pure
-
-    # Get rc matches
-    java -jar HelitronScanner.jar scanHead \
-      -threads_LCV ${task.cpus} \
-      -buffer_size 0 \
-      -lcv_filepath heads.lcvs \
-      -genome ${genome} \
-      -output rev_head_positions.txt \
-      -overlap 50 \
-      -threshold 1 \
-      --rc_mode
-
-    java -jar HelitronScanner.jar scanTail \
-      -threads_LCV ${task.cpus} \
-      -buffer_size 0 \
-      -lcv_filepath tails.lcvs \
-      -genome ${genome} \
-      -output rev_tail_positions.txt \
-      -overlap 50 \
-      -threshold 1 \
-      --rc_mode
-
-    java -jar HelitronScanner.jar pairends \
-      -head_score rev_head_positions.txt \
-      -tail_score rev_tail_positions.txt \
-      -output ${genome.baseName}_rev_pairs.txt \
-      -head_threshold ${threshold} \
-      -tail_threshold ${threshold} \
-      -helitron_len_range ${min_size}:${max_size} \
-      --rc_mode
-
-    java -jar HelitronScanner.jar draw \
-      -pscore ${genome.baseName}_rev_pairs.txt \
-      -genome ${genome} \
-      -output "${genome.baseName}_rev" \
-      --pure
-
-    cat "${genome.baseName}_fwd.hel.fa" "${genome.baseName}_rev.hel.fa" \
-      > ${genome.baseName}_helitrons.fasta
-    """
-}
- */
-
-
-/*
  * MITEfinderII
  * doi: 10.1186/s12920-018-0418-y
  * url: https://github.com/screamer/miteFinder
  *
- * Compare performance with MiteTracker if can resolve the lousy install process.
+ * TODO: Compare performance with MiteTracker if can resolve the
+ * lousy install process.
  */
 process runMiteFinder {
     label "mitefinder"
@@ -1292,8 +1433,11 @@ process tidyMiteFinder {
 
 
 /*
- * This just concatenates all fasta files, removes exact duplicates and
- * gives all sequences an unique id.
+ * This just concatenates all fasta files, removes sequences with
+ * exactly the same name, which should all have the same sequence
+ * because they are named by the genomic coords that they were taken from.
+ *
+ * TODO: filter out overlapping matches to have a single one per locus.
  */
 process combineTEPredictions {
 
@@ -1328,11 +1472,13 @@ process combineTEPredictions {
 
 
 /*
- * usearch
+ * vsearch
  * doi: 10.7717/peerj.2584
  * url: https://github.com/torognes/vsearch
  *
  * Cluster to find naive families.
+ * After this point, we could filter by frequency per-genome and within the
+ * population. This requires that we de-duplicate loci first.
  */
 process clusterSeqs {
 
@@ -1355,7 +1501,7 @@ process clusterSeqs {
       --threads "${task.cpus}" \
       --cluster_fast "combined.fasta" \
       --id 0.8 \
-      --weak_id 0.7 \
+      --weak_id 0.6 \
       --iddef 0 \
       --qmask none \
       --uc clusters.tsv \
@@ -1366,12 +1512,15 @@ process clusterSeqs {
 
 
 /*
- * Multiple sequence alignment and annotation
- * Mafft is always solid aligner choice.
- * Paste probably good option for classification.
- * Classification might go hand in hand with filtering false positives?
- * Maybe fp is first step is to exclude members of clusters,
- *  whereas here it is to exclude entire clusters?
+ * DECIPHER
+ * doi: 10.1186/s12859-015-0749-z
+ * url: http://www2.decipher.codes/AlignSequences.html
+ *
+ * Multiple sequence alignment of the clusters.
+ *
+ * To expand clusters to include more distant matches, we could
+ * convert these MSAs to HMMs and search HMM vs consensus sequences
+ * using nhmmer?
  */
 process clusterMSAs {
 
@@ -1405,6 +1554,14 @@ clusterAlignments.into {
 }
 
 
+/*
+ * Find consensus sequences of the MSAs.
+ *
+ * This just takes a majority-rules approach to consensus finding.
+ * Gaps are ignored in the calculation so no gaps should appear in the consensus.
+ * Ties are broken by selecting the first match in the following order
+ * N, A, C, G, T
+ */
 process clusterMSAsConsensus {
 
     label "decipher"
@@ -1434,6 +1591,10 @@ process clusterMSAsConsensus {
 }
 
 
+/*
+ * Convert the fasta multiple sequence alignments to a single stockholm MSA
+ * file.
+ */
 process clusterMSAsStockholm {
 
     label "python3"
@@ -1457,6 +1618,10 @@ process clusterMSAsStockholm {
 /*
  * RepeatClassifier
  * url: http://www.repeatmasker.org/RepeatModeler/
+ *
+ * Classifies the custom repeat library by matches to the consensus
+ * sequences. Also adds annotations to the stockholm, but AFAIK this
+ * is just transferred from the consensi.
  */
 process runRepeatClassifier {
 
@@ -1468,8 +1633,11 @@ process runRepeatClassifier {
     input:
     file "families_consensi.fasta" from msasConsensi
     file "families.stk" from clusterStockholm
-    file "rmlib" from repbase
+    file "rmlib" from rmlib
 
+    output:
+    file "families_consensi.fasta.classified" into classifiedMsasConsensi
+    file "families-classified.stk"
 
     script:
     """
@@ -1482,10 +1650,60 @@ process runRepeatClassifier {
     """
 }
 
+
 /*
  * RepeatMasker
  * url: http://www.repeatmasker.org/RMDownload.html
-process runRepeatMaskerRepbase {
+ *
+ * This uses pre-existing species information for repeatmasker.
+ * Only run if user provides a species to use.
+ */
+process runRepeatMaskerSpecies {
+
+    label "repeatmasker"
+    label "medium_task"
+    tag "${name}"
+    publishDir "${params.outdir}/repeatmasker"
+
+    when:
+    params.rm_species
+
+    input:
+    set val(name), file(fasta) from genomes4RunRepeatMaskerSpecies
+    file "rmlib" from rmlib
+
+    //output:
+    //set val(name), file("${name}") into repeatMasked
+
+    script:
+    """
+    # repeatmasker modifies the content of rmlib.
+    # We copy it to avoid messing up checkpointing.
+
+    cp -rL rmlib rmlib_tmp
+    export RM_LIB="\${PWD}/rmlib_tmp"
+
+    RepeatMasker \
+      -e ncbi \
+      -pa "${task.cpus}" \
+      -xsmall \
+      -species "${params.rm_species}" \
+      -poly \
+      -gff \
+      -alignments \
+      -excln \
+      "${fasta}"
+
+    rm -rf -- rmlib_tmp
+    """
+}
+
+
+/*
+ * RepeatMasker
+ * url: http://www.repeatmasker.org/RMDownload.html
+ */
+process runRepeatMasker {
 
     label "repeatmasker"
     label "medium_task"
@@ -1493,25 +1711,32 @@ process runRepeatMaskerRepbase {
     publishDir "${params.outdir}/repeatmasker"
 
     input:
-    set val(name), file(fasta) from genomes4RunRepeatMaskerRepbase
-    file "rmlib" from repbase
+    set val(name), file(fasta) from genomes4RunRepeatMasker
+    file "families_consensi.fasta.classified" from classifiedMsasConsensi
+    file "rmlib" from rmlib
 
-    output:
-    set val(name), file("${name}") into repeatMasked
+    //output:
+    //set val(name), file("${name}") into repeatMasked
 
     script:
     """
-    export RM_LIB="\${PWD}/rmlib"
+    # repeatmasker modifies the content of rmlib.
+    # We copy it to avoid messing up checkpointing.
+
+    cp -rL rmlib rmlib_tmp
+    export RM_LIB="\${PWD}/rmlib_tmp"
 
     RepeatMasker \
       -e ncbi \
-      -species "${params.rmspecies}" \
       -pa "${task.cpus}" \
+      -lib families_consensi.fasta.classified \
       -xsmall \
-      -dir "${name}" \
+      -poly \
+      -gff \
+      -alignments \
+      -excln \
       "${fasta}"
+
+    rm -rf -- rmlib_tmp
     """
 }
- */
-
-

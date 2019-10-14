@@ -15,9 +15,9 @@ GENOMETOOLS_VERSION=1.5.10
 GENOMETOOLS_URL=http://genometools.org/pub/genometools-$(GENOMETOOLS_VERSION).tar.gz
 GENOMETOOLS_PREFIX_ARG=$(INSTALL_BASE)/genometools/$(GENOMETOOLS_VERSION)
 
-GFFPAL_TAG=v0.0.2
+GFFPAL_COMMIT=4544248
 GFFPAL_REPO=https://github.com/darcyabjones/gffpal.git
-GFFPAL_PREFIX_ARG=$(INSTALL_BASE)/gffpal/$(GFFPAL_TAG)
+GFFPAL_PREFIX_ARG=$(INSTALL_BASE)/gffpal/$(GFFPAL_COMMIT)
 
 SEQRENAMER_TAG=v0.0.1
 SEQRENAMER_REPO=https://github.com/darcyabjones/seqrenamer.git
@@ -250,7 +250,7 @@ docker/genometools: genometools.Dockerfile docker/base docker/hmmer3
 docker/gffpal: gffpal.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg GFFPAL_TAG="$(GFFPAL_TAG)" \
+	  --build-arg GFFPAL_COMMIT="$(GFFPAL_COMMIT)" \
 	  --build-arg GFFPAL_REPO="$(GFFPAL_REPO)" \
 	  --build-arg GFFPAL_PREFIX_ARG="$(GFFPAL_PREFIX_ARG)" \
 	  --file $< \

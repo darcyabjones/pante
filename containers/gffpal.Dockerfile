@@ -2,9 +2,9 @@ ARG IMAGE
 
 FROM "${IMAGE}" as gffpal_builder
 
-ARG GFFPAL_TAG
+ARG GFFPAL_COMMIT
 ARG GFFPAL_REPO="https://github.com/darcyabjones/gffpal.git"
-ARG GFFPAL_PREFIX_ARG="/opt/gffpal/${GFFPAL_TAG}"
+ARG GFFPAL_PREFIX_ARG="/opt/gffpal/${GFFPAL_COMMIT}"
 ENV GFFPAL_PREFIX="${GFFPAL_PREFIX_ARG}"
 
 
@@ -26,17 +26,17 @@ RUN  set -eu \
   && update-ca-certificates \
   && git clone "${GFFPAL_REPO}" . \
   && git fetch --tags \
-  && git checkout "tags/${GFFPAL_TAG}" \
+  && git checkout "${GFFPAL_COMMIT}" \
   && pip3 install --prefix="${GFFPAL_PREFIX}" . \
   && add_runtime_dep python3 python3-biopython
 
 
 FROM "${IMAGE}"
 
-ARG GFFPAL_TAG
-ARG GFFPAL_PREFIX_ARG="/opt/gffpal/${GFFPAL_TAG}"
+ARG GFFPAL_COMMIT
+ARG GFFPAL_PREFIX_ARG="/opt/gffpal/${GFFPAL_COMMIT}"
 ENV GFFPAL_PREFIX="${GFFPAL_PREFIX_ARG}"
-LABEL gffpal.version="${GFFPAL_TAG}"
+LABEL gffpal.version="${GFFPAL_COMMIT}"
 
 ENV PATH "${GFFPAL_PREFIX}/bin:${PATH}"
 ENV PYTHONPATH "${GFFPAL_PREFIX}/lib/python3.7/site-packages:${PYTHONPATH}"

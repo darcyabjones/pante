@@ -62,14 +62,15 @@ main <- function(args) {
 
   dna <- readDNAStringSet(args$infile)
 
-  if (length(dna) <= 1) {
+  # De-replicate the input sequences.
+  u_dna <- unique(dna)
+  index <- match(dna, u_dna)
+
+  if (length(u_dna) <= 1) {
     writeXStringSet(dna, args$outfile)
     quit(save = "no", status = 0, runLast = FALSE)
   }
 
-  # De-replicate the input sequences.
-  u_dna <- unique(dna)
-  index <- match(dna, u_dna)
 
   # Do alignment of the dereplicated sequences
   sink(stderr(), type = "output")
