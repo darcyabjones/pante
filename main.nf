@@ -1874,7 +1874,7 @@ process combineGFFs {
             .view()
             .mix(
                 tidiedMiteFinderGFF,
-                eaHelitronGFF,
+                eaHelitronFilteredGFF,
                 ltrDigestGFF,
                 tidiedMMSeqsGFFs.map { d, n, g -> [n, g] }.view(),
                 rnammerGFF,
