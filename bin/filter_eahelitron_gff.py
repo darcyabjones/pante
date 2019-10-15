@@ -87,6 +87,8 @@ def main():
             print(flank5, file=args.outfile)
             print(flank3, file=args.outfile)
 
+        counter += 1
+
     return
 
 

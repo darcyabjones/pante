@@ -1877,7 +1877,7 @@ process combineGFFs {
                 tidiedMiteFinderGFF,
                 eaHelitronFilteredGFF,
                 ltrDigestGFF,
-                tidiedMMSeqsGFFs.map { d, n, g -> [n, g] }.view(),
+                tidiedMMSeqsGFFs.map { d, n, g -> [n, g] },
                 rnammerGFF,
                 infernalMatches,
                 tRNAScanGFF,
