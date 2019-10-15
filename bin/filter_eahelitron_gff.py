@@ -2,6 +2,7 @@
 
 import sys
 import argparse
+from copy import deepcopy
 
 from gffpal.gff import GFF, GFFRecord, Strand
 
@@ -57,10 +58,16 @@ def main():
         if len(mrna.children) < 2:
             continue
 
+        region = deepcopy(mrna)
+        region.type = "repeat_region"
+        region.attributes.id = f"repeat_region{counter}"
+        region.attributes.ontology_term = ["SO:0000657"],
+
         mrna.type = "helitron"
+        mrna.parents = [region]
+        mrna.attributes.parent = [region.attributes.id]
         mrna.attributes.id = f"helitron{counter}"
         mrna.attributes.ontology_term = ["SO:0000544"]
-        mrna.attributes.custom = {}
 
         flank3 = [c for c in mrna.children
                   if c.attributes.id.endswith(".3")][0]
@@ -79,6 +86,7 @@ def main():
 
         mrna.source = flank5.source
 
+        print(region, file=args.outfile)
         print(mrna, file=args.outfile)
         if mrna.strand == Strand.MINUS:
             print(flank3, file=args.outfile)
