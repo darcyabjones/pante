@@ -69,8 +69,25 @@ params.gypsydb_url = "http://gydb.org/gydbModules/collection/collection/db/GyDB_
 params.pfam_ids = "$baseDir/data/pfam_ids.txt"
 params.protein_families = "$baseDir/data/proteins/families.stk"
 
+params.infernal_max_evalue = 0.00001
+params.mmseqs_max_evalue = 0.1
+
 params.min_intra_frequency = 3
 params.min_inter_proportion = 0.05
+
+params.eahelitron_three_prime_fuzzy_level = 3
+params.eahelitron_upstream_length = 3000
+params.eahelitron_downstream_length = 50
+
+params.ltrharvest_similar = 85
+params.ltrharvest_vic = 10
+params.ltrharvest_seed = 20
+params.ltrharvest_minlenltr = 100
+params.ltrharvest_maxlenltr = 7000
+params.ltrharvest_mintsd = 4
+params.ltrharvest_maxtsd = 6
+
+params.mitefinder_threshold = 0.5
 
 params.trans_table = 1
 
@@ -605,7 +622,7 @@ process runInfernal {
       --cmscan \
       --fmt2 \
       --all \
-      -E 0.00001 \
+      -E "${params.infernal_max_evalue}" \
       filtered.txt \
     | awk -F'\\t' 'BEGIN {OFS="\\t"} { \$9=gensub(":", "=", "g", \$9); print }' \
     > "${name}_rfam_cmscan.gff3"
@@ -1006,7 +1023,7 @@ process searchProfilesVsGenomes {
       search/db \
       tmp \
       --threads "${task.cpus}" \
-      -e 0.1 \
+      -e "${params.mmseqs_max_evalue}" \
       -s 7.5 \
       --search-type 2 \
       --num-iterations 1 \
@@ -1183,13 +1200,13 @@ process runLtrHarvest {
     """
     gt ltrharvest \
       -seqids yes \
-      -similar 85 \
-      -vic 10 \
-      -seed 20 \
-      -minlenltr 100 \
-      -maxlenltr 7000 \
-      -mintsd 4 \
-      -maxtsd 6 \
+      -similar "${params.ltrharvest_similar}" \
+      -vic "${params.ltrharvest_vic}" \
+      -seed "${params.ltrharvest_seed}" \
+      -minlenltr "${params.ltrharvest_minlenltr}" \
+      -maxlenltr "${params.ltrharvest_maxlenltr}" \
+      -mintsd "${params.ltrharvest_mintsd}" \
+      -maxtsd "${params.ltrharvest_maxtsd}" \
       -index "${fasta}" \
       -gff3 "${name}_ltrharvest_tmp.gff3" \
       -out "${name}_ltrharvest.fasta" \
@@ -1232,8 +1249,8 @@ process runLtrDigest {
 
     output:
     set val(name), file("${name}_ltrdigest_nice_names.fasta") into ltrDigestSeqs
+    set val(name), file("${name}_ltrdigest.gff3") into ltrDigestGFF
     file "${name}_ltrdigest_complete.fas"
-    file "${name}_ltrdigest.gff3"
     file "${name}_ltrdigest_3ltr.fas"
     file "${name}_ltrdigest_5ltr.fas"
     file "${name}_ltrdigest_conditions.csv"
@@ -1296,28 +1313,22 @@ process runEAHelitron {
 
     output:
     set val(name), file("${name}_eahelitron_complete.fasta") into eaHelitronSeqs
+    set val(name), file("${name}_eahelitron.gff3") into eaHelitronGFF
     file "${name}_eahelitron.5.fa"
     file "${name}_eahelitron.3.txt"
     file "${name}_eahelitron.5.txt"
     file "${name}_eahelitron.u*.fa"
     file "${name}_eahelitron.d*.fa"
-    file "${name}_eahelitron.gff3"
     file "${name}_eahelitron.bed"
     file "${name}_eahelitron.len.txt"
 
     script:
-    three_prime_fuzzy_level = 4
-    upstream_length = 3000 // default
-    downstream_length = 500 // default
-
     """
-    # -p "${task.cpus}"
-
     EAHelitron \
       -o "${name}_eahelitron" \
-      -r "${three_prime_fuzzy_level}" \
-      -u "${upstream_length}" \
-      -d "${downstream_length}" \
+      -r "${params.eahelitron_three_prime_fuzzy_level}" \
+      -u "${params.eahelitron_upstream_length}" \
+      -d "${params.eahelitron_downstream_length}" \
       "${fasta}"
 
     awk -v name="${name}" '
@@ -1328,6 +1339,27 @@ process runEAHelitron {
       { print }
     ' < "${name}_eahelitron.5.fa" \
     > "${name}_eahelitron_complete.fasta"
+    """
+}
+
+
+process filterEAHelitronGFF {
+
+    label "gffpal"
+    label "small_task"
+    publishDir "${params.outdir}/tes/${name}"
+    tag "${name}"
+
+    input:
+    set val(name), file("in.gff") from eaHelitronGFF
+
+    output:
+    set val(name),
+        file("${name}_eahelitron_filtered.gff3") into eaHelitronFilteredGFF
+
+    script:
+    """
+    filter_eahelitron_gff.py -o "${name}_eahelitron_filtered.gff3" in.gff
     """
 }
 
@@ -1343,7 +1375,7 @@ process runEAHelitron {
 process runMiteFinder {
     label "mitefinder"
     label "small_task"
-    tag { name }
+    tag "${name}"
     publishDir "${params.outdir}/tes/${name}"
 
     input:
@@ -1354,14 +1386,12 @@ process runMiteFinder {
     set val(name), file("${name}_mitefinder.fasta") into miteFinderFasta
 
     script:
-    threshold = 0.5
-
     """
     miteFinder \
       -input "${genome}" \
       -output "${name}_mitefinder.fasta" \
       -pattern_scoring pattern_scoring.txt \
-      -threshold "${threshold}"
+      -threshold "${params.mitefinder_threshold}"
     """
 }
 
@@ -1411,7 +1441,7 @@ process tidyMiteFinder {
     output:
     set val(name),
         file("${name}_mitefinder_nice_names.fasta") into tidiedMiteFinderFasta
-    file "${name}_mitefinder.gff3"
+    set val(name), file("${name}_mitefinder.gff3") into tidiedMiteFinderGFF
 
     script:
     """
@@ -1697,7 +1727,7 @@ process runRepeatMaskerSpecies {
     label "repeatmasker"
     label "medium_task"
     tag "${name}"
-    publishDir "${params.outdir}/repeatmasker"
+    publishDir "${params.outdir}/tes/${name}"
 
     when:
     params.rm_species
@@ -1754,7 +1784,7 @@ process runRepeatMasker {
     label "repeatmasker"
     label "medium_task"
     tag "${name}"
-    publishDir "${params.outdir}/repeatmasker"
+    publishDir "${params.outdir}/tes/${name}"
 
     input:
     set val(name), file(fasta) from genomes4RunRepeatMasker
@@ -1796,5 +1826,75 @@ process runRepeatMasker {
     mv "${fasta.name}.out" "${name}_repeatmasker.txt"
     mv "${fasta.name}.out.gff" "${name}_repeatmasker.gff2"
     rm -rf -- rmlib_tmp
+    """
+}
+
+
+process getRepeatMaskerGFF3 {
+
+    label "gffpal"
+    label "small_task"
+
+    publishDir "${params.outdir}/tes/${name}"
+    tag "${name} - ${analysis}"
+
+    input:
+    set val(name),
+        val(analysis),
+        file("rm.out") from repeatMasked
+            .map { n, o -> [n, "repeatmasker", o] }
+            .mix( repeatSpeciesMasked.map {n, o -> [n, "repeatmasker_species" ]} )
+
+    output:
+    set val(name),
+        val(analysis),
+        file("${name}_${analysis}.gff3") into repeatMaskerGFF3
+
+    script:
+    """
+    rmout2gff3.py -o "${name}_${analysis}.gff3" rm.out
+    """
+}
+
+/*
+*/
+process combineGFFs {
+
+    label "genometools"
+    label "small_task"
+
+    publishDir "${params.outdir}/final"
+    tag "${name}"
+
+    input:
+    set val(name),
+        file("gffs/*") from repeatMaskerGFF3
+            .view()
+            .map { n, a, g -> [n, g] }
+            .view()
+            .mix(
+                tidiedMiteFinderGFF,
+                eaHelitronGFF,
+                ltrDigestGFF,
+                tidiedMMSeqsGFFs.map { d, n, g -> [n, g] }.view(),
+                rnammerGFF,
+                infernalMatches,
+                tRNAScanGFF,
+            )
+            .groupTuple(by: 0)
+
+    output:
+    set val(name), file("${name}_pante.gff3")
+
+    script:
+    """
+    mkdir tidied
+
+    for gff in gffs/*
+    do
+      gt gff3 -tidy -sort -retainids "\${gff}" > "tidied/\$(basename \${gff})"
+    done
+
+    gt merge -tidy tidied/* > "${name}_pante.gff3"
     """
 }
