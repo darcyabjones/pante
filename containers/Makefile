@@ -60,10 +60,6 @@ MMSEQS_TAG=9-d36de
 MMSEQS_REPO=https://github.com/soedinglab/MMseqs2.git
 MMSEQS_PREFIX_ARG=$(INSTALL_BASE)/mmseqs/$(MMSEQS_TAG)
 
-FFDB_TAG=db9d8a5
-FFDB_REPO=https://github.com/darcyabjones/ffdb.git
-FFDB_PREFIX_ARG=$(INSTALL_BASE)/ffdb/$(FFDB_TAG)
-
 INFERNAL_VERSION=1.1.2
 INFERNAL_URL=http://eddylab.org/infernal/infernal-1.1.2.tar.gz
 INFERNAL_PREFIX_ARG=$(INSTALL_BASE)/infernal/$(INFERNAL_VERSION)
@@ -128,7 +124,7 @@ REPBASE_URL=http://www.girinst.org/server/RepBase/protected/repeatmaskerlibrarie
 REPBASE_USERNAME:=
 REPBASE_PASSWORD:=
 
-GENERAL=base genometools python3 gffpal seqrenamer
+GENERAL=base genometools python3 gffpal
 NONCODING=infernal trnascan occultercut
 ALIGNMENT=rmblast vsearch decipher mmseqs
 ANNOTATION=repeatmasker eahelitron mitefinder
@@ -142,7 +138,7 @@ all: docker/all singularity/all
 docker: docker/pante
 docker/all: docker/general docker/alignment docker/annotation docker/noncoding
 	@echo "WARNING: proprietary software will not be built by default."
-	@echo "WARNING: call `make docker/proprietary` explicitly to create them."
+	@echo "WARNING: call 'make docker/proprietary' explicitly to create them."
 
 docker/general: $(addprefix docker/,$(GENERAL))
 docker/alignment: $(addprefix docker/,$(ALIGNMENT))
@@ -156,7 +152,7 @@ docker/proprietary: $(addprefix docker/,$(PROPRIETARY))
 singularity: singularity/pante.sif
 singularity/all: singularity/general singularity/alignment singularity/annotation singularity/noncoding
 	@echo "WARNING: proprietary software will not be built by default."
-	@echo "WARNING: call `make singularity/proprietary` explicitly to create them."
+	@echo "WARNING: call 'make singularity/proprietary' explicitly to create them."
 
 singularity/general: $(addprefix singularity/,$(addsuffix .sif,$(GENERAL)))
 singularity/alignment: $(addprefix singularity/,$(addsuffix .sif,$(ALIGNMENT)))
@@ -207,6 +203,8 @@ dockerpull/%:
 	@mkdir -p "$(dir $@)"
 	@touch docker/$(notdir $@)
 
+
+# Basic tools
 
 docker/base: base.Dockerfile
 	docker build \
@@ -260,15 +258,15 @@ docker/gffpal: gffpal.Dockerfile docker/base
 	@touch $@
 
 
-docker/seqrenamer: seqrenamer.Dockerfile docker/base docker/gffpal
+# Aligners
+
+# Only needed for rnammer
+docker/hmmer2: hmmer2.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg GFFPAL_IMAGE="$(call make_image_name,gffpal)" \
-	  --build-arg SEQRENAMER_TAG="$(SEQRENAMER_TAG)" \
-	  --build-arg SEQRENAMER_REPO="$(SEQRENAMER_REPO)" \
-	  --build-arg SEQRENAMER_PREFIX_ARG="$(SEQRENAMER_PREFIX_ARG)" \
-	  --build-arg GFFPAL_TAG="$(GFFPAL_TAG)" \
-	  --build-arg GFFPAL_PREFIX_ARG="$(GFFPAL_PREFIX_ARG)" \
+	  --build-arg HMMER2_VERSION="$(HMMER2_VERSION)" \
+	  --build-arg HMMER2_URL="$(HMMER2_URL)" \
+	  --build-arg HMMER2_PREFIX_ARG="$(HMMER2_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -276,15 +274,12 @@ docker/seqrenamer: seqrenamer.Dockerfile docker/base docker/gffpal
 	@touch $@
 
 
-# Repeat masking stuff
-
-
-docker/mitefinder: mitefinder.Dockerfile docker/base
+docker/hmmer3: hmmer3.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg MITEFINDER_COMMIT="$(MITEFINDER_COMMIT)" \
-	  --build-arg MITEFINDER_REPO="$(MITEFINDER_REPO)" \
-	  --build-arg MITEFINDER_PREFIX_ARG="$(MITEFINDER_PREFIX_ARG)" \
+	  --build-arg HMMER3_VERSION="$(HMMER3_VERSION)" \
+	  --build-arg HMMER3_URL="$(HMMER3_URL)" \
+	  --build-arg HMMER3_PREFIX_ARG="$(HMMER3_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -292,12 +287,12 @@ docker/mitefinder: mitefinder.Dockerfile docker/base
 	@touch $@
 
 
-docker/eahelitron: eahelitron.Dockerfile docker/base
+docker/mmseqs: mmseqs.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg EAHELITRON_COMMIT="$(EAHELITRON_COMMIT)" \
-	  --build-arg EAHELITRON_REPO="$(EAHELITRON_REPO)" \
-	  --build-arg EAHELITRON_PREFIX_ARG="$(EAHELITRON_PREFIX_ARG)" \
+	  --build-arg MMSEQS_TAG="$(MMSEQS_TAG)" \
+	  --build-arg MMSEQS_REPO="$(MMSEQS_REPO)" \
+	  --build-arg MMSEQS_PREFIX_ARG="$(MMSEQS_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -324,6 +319,34 @@ docker/decipher: decipher.Dockerfile docker/base
 	  --build-arg DECIPHER_VERSION="$(DECIPHER_VERSION)" \
 	  --build-arg DECIPHER_URL="$(DECIPHER_URL)" \
 	  --build-arg DECIPHER_PREFIX_ARG="$(DECIPHER_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+# Repeat finding stuff
+
+docker/mitefinder: mitefinder.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg MITEFINDER_COMMIT="$(MITEFINDER_COMMIT)" \
+	  --build-arg MITEFINDER_REPO="$(MITEFINDER_REPO)" \
+	  --build-arg MITEFINDER_PREFIX_ARG="$(MITEFINDER_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/eahelitron: eahelitron.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg EAHELITRON_COMMIT="$(EAHELITRON_COMMIT)" \
+	  --build-arg EAHELITRON_REPO="$(EAHELITRON_REPO)" \
+	  --build-arg EAHELITRON_PREFIX_ARG="$(EAHELITRON_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -364,6 +387,7 @@ docker/repeatmasker: repeatmasker.Dockerfile docker/base docker/rmblast
 	  --build-arg RECON_PREFIX_ARG="$(RECON_PREFIX_ARG)" \
 	  --build-arg RMASK_VERSION="$(RMASK_VERSION)" \
 	  --build-arg RMASK_URL="$(RMASK_URL)" \
+	  --build-arg RMASK_PREFIX_ARG="$(RMASK_PREFIX_ARG)" \
 	  --build-arg RMOD_VERSION="$(RMOD_VERSION)" \
 	  --build-arg RMOD_URL="$(RMOD_URL)" \
 	  --build-arg RMOD_PREFIX_ARG="$(RMOD_PREFIX_ARG)" \
@@ -374,6 +398,8 @@ docker/repeatmasker: repeatmasker.Dockerfile docker/base docker/rmblast
 	@mkdir -p "$(dir $@)"
 	@touch $@
 
+
+# non-coding rna stuff
 
 docker/aragorn: aragorn.Dockerfile docker/base
 	docker build \
@@ -436,73 +462,6 @@ docker/trnascan: trnascan.Dockerfile docker/base docker/infernal
 	@touch $@
 
 
-docker/occultercut: occultercut.Dockerfile docker/base
-	docker build \
-	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
-	  --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
-	  --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
-
-
-docker/hmmer3: hmmer3.Dockerfile docker/base
-	docker build \
-	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg HMMER3_VERSION="$(HMMER3_VERSION)" \
-	  --build-arg HMMER3_URL="$(HMMER3_URL)" \
-	  --build-arg HMMER3_PREFIX_ARG="$(HMMER3_PREFIX_ARG)" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
-
-
-docker/ffdb: ffdb.Dockerfile docker/base
-	docker build \
-	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg FFDB_TAG="$(FFDB_TAG)" \
-	  --build-arg FFDB_REPO="$(FFDB_REPO)" \
-	  --build-arg FFDB_PREFIX_ARG="$(FFDB_PREFIX_ARG)" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
-
-
-docker/mmseqs: mmseqs.Dockerfile docker/base docker/ffdb
-	docker build \
-	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg MMSEQS_TAG="$(MMSEQS_TAG)" \
-	  --build-arg MMSEQS_REPO="$(MMSEQS_REPO)" \
-	  --build-arg MMSEQS_PREFIX_ARG="$(MMSEQS_PREFIX_ARG)" \
-	  --build-arg FFDB_IMAGE="$(call make_image_name,ffdb)" \
-	  --build-arg FFDB_TAG="$(FFDB_TAG)" \
-	  --build-arg FFDB_PREFIX_ARG="$(FFDB_PREFIX_ARG)" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
-
-
-docker/hmmer2: hmmer2.Dockerfile docker/base
-	docker build \
-	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg HMMER2_VERSION="$(HMMER2_VERSION)" \
-	  --build-arg HMMER2_URL="$(HMMER2_URL)" \
-	  --build-arg HMMER2_PREFIX_ARG="$(HMMER2_PREFIX_ARG)" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
-
 docker/rnammer: rnammer.Dockerfile docker/base docker/hmmer2
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
@@ -518,16 +477,15 @@ docker/rnammer: rnammer.Dockerfile docker/base docker/hmmer2
 	@mkdir -p "$(dir $@)"
 	@touch $@
 
-docker/pante: pante.Dockerfile docker/python3 docker/mmseqs docker/decipher
+
+# Other stuff
+
+docker/occultercut: occultercut.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
-	  --build-arg PYTHON3_IMAGE="$(call make_image_name,python3)" \
-	  --build-arg MMSEQS_IMAGE="$(call make_image_name,mmseqs)" \
-	  --build-arg MMSEQS_TAG="$(MMSEQS_TAG)" \
-	  --build-arg MMSEQS_PREFIX_ARG="$(MMSEQS_PREFIX_ARG)" \
-	  --build-arg DECIPHER_IMAGE="$(call make_image_name,decipher)" \
-	  --build-arg DECIPHER_VERSION="$(DECIPHER_VERSION)" \
-	  --build-arg DECIPHER_PREFIX_ARG="$(DECIPHER_PREFIX_ARG)" \
+	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
+	  --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
+	  --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -535,47 +493,83 @@ docker/pante: pante.Dockerfile docker/python3 docker/mmseqs docker/decipher
 	@touch $@
 
 
+# THE MONOLITH(s)
 
-downloads/Dfam.hmm.gz:
-	mkdir -p downloads
-	cd downloads \
-	&& wget http://dfam.org/releases/Dfam_3.0/families/Dfam.hmm.gz
+docker/pante: docker/decipher docker/genometools docker/gffpal docker/hmmer3
+docker/pante: docker/infernal docker/mitefinder docker/mmseqs docker/occultercut
+docker/pante: docker/python3 docker/repeatmasker docker/rmblast docker/trnascan
+docker/pante: docker/vsearch
+docker/pante: pante.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg DECIPHER_IMAGE="$(call make_image_name,decipher)" \
+	  --build-arg DECIPHER_VERSION="$(DECIPHER_VERSION)" \
+	  --build-arg DECIPHER_PREFIX_ARG="$(DECIPHER_PREFIX_ARG)" \
+	  --build-arg EAHELITRON_IMAGE="$(call make_image_name,eahelitron)" \
+	  --build-arg EAHELITRON_COMMIT="$(EAHELITRON_COMMIT)" \
+	  --build-arg EAHELITRON_PREFIX_ARG="$(EAHELITRON_PREFIX_ARG)" \
+	  --build-arg GENOMETOOLS_IMAGE="$(call make_image_name,genometools)" \
+	  --build-arg GENOMETOOLS_VERSION="$(GENOMETOOLS_VERSION)" \
+	  --build-arg GENOMETOOLS_PREFIX_ARG="$(GENOMETOOLS_PREFIX_ARG)" \
+	  --build-arg GFFPAL_IMAGE="$(call make_image_name,gffpal)" \
+	  --build-arg GFFPAL_TAG="$(GFFPAL_TAG)" \
+	  --build-arg GFFPAL_PREFIX_ARG="$(GFFPAL_PREFIX_ARG)" \
+	  --build-arg HMMER3_IMAGE="$(call make_image_name,hmmer3)" \
+	  --build-arg HMMER3_VERSION="$(HMMER3_VERSION)" \
+	  --build-arg HMMER3_PREFIX_ARG="$(HMMER3_PREFIX_ARG)" \
+	  --build-arg INFERNAL_IMAGE="$(call make_image_name,infernal)" \
+	  --build-arg INFERNAL_VERSION="$(INFERNAL_VERSION)" \
+	  --build-arg INFERNAL_PREFIX_ARG="$(INFERNAL_PREFIX_ARG)" \
+	  --build-arg MITEFINDER_IMAGE="$(call make_image_name,mitefinder)" \
+	  --build-arg MITEFINDER_COMMIT="$(MITEFINDER_COMMIT)" \
+	  --build-arg MITEFINDER_PREFIX_ARG="$(MITEFINDER_PREFIX_ARG)" \
+	  --build-arg MMSEQS_IMAGE="$(call make_image_name,mmseqs)" \
+	  --build-arg MMSEQS_TAG="$(MMSEQS_TAG)" \
+	  --build-arg MMSEQS_PREFIX_ARG="$(MMSEQS_PREFIX_ARG)" \
+	  --build-arg OCCULTERCUT_IMAGE="$(call make_image_name,occultercut)" \
+	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
+	  --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
+	  --build-arg PYTHON3_IMAGE="$(call make_image_name,python3)" \
+	  --build-arg REPEATMASKER_IMAGE="$(call make_image_name,repeatmasker)" \
+	  --build-arg TRF_VERSION="$(TRF_VERSION)" \
+	  --build-arg TRF_PREFIX_ARG="$(TRF_PREFIX_ARG)" \
+	  --build-arg NSEG_PREFIX_ARG="$(NSEG_PREFIX_ARG)" \
+	  --build-arg REPEATSCOUT_VERSION="$(REPEATSCOUT_VERSION)" \
+	  --build-arg REPEATSCOUT_PREFIX_ARG="$(REPEATSCOUT_PREFIX_ARG)" \
+	  --build-arg RECON_VERSION="$(RECON_VERSION)" \
+	  --build-arg RECON_PREFIX_ARG="$(RECON_PREFIX_ARG)" \
+	  --build-arg RMASK_VERSION="$(RMASK_VERSION)" \
+	  --build-arg RMASK_PREFIX_ARG="$(RMASK_PREFIX_ARG)" \
+	  --build-arg RMOD_VERSION="$(RMOD_VERSION)" \
+	  --build-arg RMOD_PREFIX_ARG="$(RMOD_PREFIX_ARG)" \
+	  --build-arg RM_LIB_ARG="$(RM_LIB_ARG)" \
+	  --build-arg RMBLAST_IMAGE="$(call make_image_name,rmblast)" \
+	  --build-arg RMBLAST_VERSION="$(RMBLAST_VERSION)" \
+	  --build-arg RMBLAST_PREFIX_ARG="$(RMBLAST_PREFIX_ARG)" \
+	  --build-arg TRNASCAN_IMAGE="$(call make_image_name,trnascan)" \
+	  --build-arg TRNASCAN_VERSION="$(TRNASCAN_VERSION)" \
+	  --build-arg TRNASCAN_PREFIX_ARG="$(TRNASCAN_PREFIX_ARG)" \
+	  --build-arg VSEARCH_IMAGE="$(call make_image_name,vsearch)" \
+	  --build-arg VSEARCH_VERSION="$(VSEARCH_VERSION)" \
+	  --build-arg VSEARCH_PREFIX_ARG="$(VSEARCH_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
 
 
-downloads/Dfam.embl.gz:
-	mkdir -p downloads
-	cd downloads \
-	&& wget http://dfam.org/releases/Dfam_3.0/families/Dfam.embl.gz
-
-
-downloads/$(RMASK_META_TAR):
-	mkdir -p downloads
-	cd downloads \
-	&& wget -O $@ $(RMASK_META_URL)
-
-
-downloads/$(REPBASE_TAR):
-	mkdir -p downloads
-	cd downloads \
-	&& wget \
-	     --user $(REPBASE_USERNAME) \
-	     --password $(REPBASE_PASSWORD) \
-	     -O $@ \
-	     $(REPBASE_URL)
-
-
-rmlib: downloads/Dfam.hmm.gz downloads/Dfam.embl.gz
-rmlib: downloads/$(RMASK_META_TAR) downloads/$(REPBASE_TAR)
-rmlib: docker/repeatmasker
-	docker run \
-	  --rm \
-	  -v "$(PWD)/downloads:/downloads:rw" \
-	  -v "$(PWD)/rmlib:$(RM_LIB_ARG):rw" \
-	  -w /downloads \
-	  $(call make_image_name,repeatmasker) \
-	  prep_repeatmasker_lib.sh \
-	    $(REPBASE_TAR) \
-	    $(RMASK_META_TAR) \
-	    Dfam.hmm.gz \
-	    Dfam.embl.gz \
-	    $(RM_LIB_ARG)
+docker/pante-plus: docker/pante docker/hmmer2 docker/rnammer
+	docker build \
+	  --build-arg PANTE_IMAGE="$(call make_image_name,pante)" \
+	  --build-arg HMMER2_IMAGE="$(call make_image_name,hmmer2)" \
+	  --build-arg HMMER2_VERSION="$(HMMER2_VERSION)" \
+	  --build-arg HMMER2_PREFIX_ARG="$(HMMER2_PREFIX_ARG)" \
+	  --build-arg RNAMMER_IMAGE="$(call make_image_name,rnammer)" \
+	  --build-arg RNAMMER_VERSION="$(RNAMMER_VERSION)" \
+	  --build-arg RNAMMER_PREFIX_ARG="$(RNAMMER_PREFIX_ARG)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@

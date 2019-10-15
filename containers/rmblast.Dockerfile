@@ -2,9 +2,9 @@ ARG IMAGE
 
 FROM "${IMAGE}" as rmblast_builder
 
-ARG RMBLAST_VERSION="2.9.0+"
-ARG RMBLAST_URL="ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/2.9.0/ncbi-blast-2.9.0+-src.tar.gz"
-ARG RMBLAST_PATCH_URL="http://www.repeatmasker.org/isb-2.9.0+-rmblast.patch.gz"
+ARG RMBLAST_VERSION
+ARG RMBLAST_URL=
+ARG RMBLAST_PATCH_URL
 ARG RMBLAST_PREFIX_ARG="/opt/rmblast/${RMBLAST_VERSION}"
 ENV RMBLAST_PREFIX="${RMBLAST_PREFIX_ARG}"
 
@@ -80,8 +80,8 @@ RUN  set -eu \
 
 FROM "${IMAGE}"
 
-ARG RMBLAST_VERSION="2.9.0+"
-ARG RMBLAST_PREFIX_ARG="/opt/rmblast/${RMBLAST_VERSION}"
+ARG RMBLAST_VERSION
+ARG RMBLAST_PREFIX_ARG
 ENV RMBLAST_PREFIX="${RMBLAST_PREFIX_ARG}"
 
 ENV PATH="${RMBLAST_PREFIX}/bin:${PATH}"

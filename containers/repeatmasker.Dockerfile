@@ -5,8 +5,8 @@ FROM "${RMBLAST_IMAGE}" as rmblast_builder
 
 FROM "${IMAGE}" as nseg_builder
 
-ARG NSEG_URL="ftp://ftp.ncbi.nih.gov/pub/seg/nseg/"
-ARG NSEG_PREFIX_ARG="/opt/nseg/bin"
+ARG NSEG_URL
+ARG NSEG_PREFIX_ARG
 ENV NSEG_PREFIX="${NSEG_PREFIX_ARG}"
 ENV PATH="${PATH}:${NSEG_PREFIX}/bin"
 
@@ -28,9 +28,9 @@ RUN  set -eu \
 
 FROM "${IMAGE}" as repscout_builder
 
-ARG REPEATSCOUT_VERSION="1.0.5"
-ARG REPEATSCOUT_URL="http://www.repeatmasker.org/RepeatScout-1.0.5.tar.gz"
-ARG REPEATSCOUT_PREFIX_ARG="/opt/repeatscout/${REPEATSCOUT_VERSION}"
+ARG REPEATSCOUT_VERSION
+ARG REPEATSCOUT_URL
+ARG REPEATSCOUT_PREFIX_ARG
 ENV REPEATSCOUT_PREFIX="${REPEATSCOUT_PREFIX_ARG}"
 
 ENV PATH="${PATH}:${REPEATSCOUT_PREFIX}/bin"
@@ -55,9 +55,9 @@ RUN  set -eu \
 
 FROM "${IMAGE}" as recon_builder
 
-ARG RECON_VERSION="1.08"
-ARG RECON_URL="http://www.repeatmasker.org/RepeatModeler/RECON-1.08.tar.gz"
-ARG RECON_PREFIX_ARG="/opt/recon/${RECON_VERSION}"
+ARG RECON_VERSION
+ARG RECON_URL
+ARG RECON_PREFIX_ARG
 ENV RECON_PREFIX="${RECON_PREFIX_ARG}"
 
 ENV PATH="${PATH}:${RECON_PREFIX}/bin:${RECON_PREFIX}/scripts"
@@ -88,15 +88,15 @@ RUN  set -eu \
 
 FROM "${IMAGE}"
 
-ARG TRF_VERSION="409"
-ARG TRF_URL="http://tandem.bu.edu/trf/downloads/trf409.linux64"
-ARG TRF_PREFIX_ARG="/opt/trf/${TRF_VERSION}"
+ARG TRF_VERSION
+ARG TRF_URL
+ARG TRF_PREFIX_ARG
 ENV TRF_PREFIX="${TRF_PREFIX_ARG}"
 ENV PATH="${TRF_PREFIX}/bin:${PATH}"
 
 # Install blast and repeat modeller deps from other images.
 ARG RMBLAST_VERSION
-ARG RMBLAST_PREFIX_ARG="/opt/rmblast/${RMBLAST_VERSION}"
+ARG RMBLAST_PREFIX_ARG
 ENV RMBLAST_PREFIX="${RMBLAST_PREFIX_ARG}"
 
 ENV PATH="${RMBLAST_PREFIX}/bin:${PATH}"
@@ -107,7 +107,7 @@ ENV LD_LIBRARY_PATH="${RMBLAST_PREFIX}/lib:${LD_LIBRARY_PATH}"
 COPY --from=rmblast_builder "${RMBLAST_PREFIX}" "${RMBLAST_PREFIX}"
 COPY --from=rmblast_builder "${APT_REQUIREMENTS_FILE}" /build/apt/rmblast.txt
 
-ARG NSEG_PREFIX_ARG="/opt/nseg"
+ARG NSEG_PREFIX_ARG
 ENV NSEG_PREFIX="${NSEG_PREFIX_ARG}"
 ENV PATH="${NSEG_PREFIX}/bin:${PATH}"
 
@@ -115,8 +115,8 @@ COPY --from=nseg_builder "${NSEG_PREFIX}" "${NSEG_PREFIX}"
 COPY --from=nseg_builder "${APT_REQUIREMENTS_FILE}" /build/apt/nseg.txt
 
 
-ARG REPEATSCOUT_VERSION="1.0.5"
-ARG REPEATSCOUT_PREFIX_ARG="/opt/repeatscout/${REPEATSCOUT_VERSION}"
+ARG REPEATSCOUT_VERSION
+ARG REPEATSCOUT_PREFIX_ARG
 ENV REPEATSCOUT_PREFIX="${REPEATSCOUT_PREFIX_ARG}"
 
 ENV PATH="${REPEATSCOUT_PREFIX}/bin:${PATH}"
@@ -125,8 +125,8 @@ COPY --from=repscout_builder "${REPEATSCOUT_PREFIX}" "${REPEATSCOUT_PREFIX}"
 COPY --from=repscout_builder "${APT_REQUIREMENTS_FILE}" /build/apt/repeatscout.txt
 
 
-ARG RECON_VERSION="1.08"
-ARG RECON_PREFIX_ARG="/opt/recon/${RECON_VERSION}"
+ARG RECON_VERSION
+ARG RECON_PREFIX_ARG
 ENV RECON_PREFIX="${RECON_PREFIX_ARG}"
 
 ENV PATH="${RECON_PREFIX}/bin:${RECON_PREFIX}/scripts:${PATH}"
@@ -136,18 +136,18 @@ COPY --from=recon_builder "${APT_REQUIREMENTS_FILE}" /build/apt/recon.txt
 
 
 # Set some working environment variables.
-ARG RMASK_VERSION="4-0-9"
-ARG RMASK_URL="http://www.repeatmasker.org/RepeatMasker-open-${RMASK_VERSION}.tar.gz"
-ARG RMASK_PREFIX_ARG="/opt/repeatmasker/${RMASK_VERSION}"
+ARG RMASK_VERSION
+ARG RMASK_URL
+ARG RMASK_PREFIX_ARG
 ENV RMASK_PREFIX="${RMASK_PREFIX_ARG}"
 
 ARG RM_LIB_ARG="/data/rmlib"
 ENV RM_LIB="${RM_LIB_ARG}"
 
 
-ARG RMOD_VERSION="1.0.11"
-ARG RMOD_URL="http://www.repeatmasker.org/RepeatModeler/RepeatModeler-open-${RMOD_VERSION}.tar.gz"
-ARG RMOD_PREFIX_ARG="/opt/repeatmodeller/${RMOD_VERSION}"
+ARG RMOD_VERSION
+ARG RMOD_URL
+ARG RMOD_PREFIX_ARG
 ENV RMOD_PREFIX="${RMOD_PREFIX_ARG}"
 
 ENV PATH="${RMASK_PREFIX}:${RMASK_PREFIX}/util:${RMOD_PREFIX}:${RMOD_PREFIX}/util:${PATH}"

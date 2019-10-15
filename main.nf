@@ -1705,12 +1705,15 @@ process runRepeatClassifier {
 
     script:
     """
-    export RM_LIB="\${PWD}/rmlib"
+    cp -rL rmlib rmlib_tmp
+    export RM_LIB="\${PWD}/rmlib_tmp"
 
     RepeatClassifier \
       -engine ncbi \
       -consensi families_consensi.fasta \
       -stockholm families.stk
+
+    rm -rf -- rmlib_tmp
     """
 }
 
@@ -1869,9 +1872,7 @@ process combineGFFs {
     input:
     set val(name),
         file("gffs/*") from repeatMaskerGFF3
-            .view()
             .map { n, a, g -> [n, g] }
-            .view()
             .mix(
                 tidiedMiteFinderGFF,
                 eaHelitronFilteredGFF,
