@@ -5,9 +5,7 @@ FROM "${IMAGE}" as builder
 RUN  set -eu \
   && DEBIAN_FRONTEND=noninteractive \
   && . /build/base.sh \
-  && add_runtime_dep git python3 python3-pip python3-biopython python3-pandas python3-setuptools python3-wheel \
+  && add_runtime_dep git python3 python3-pip python3-intervaltree python3-biopython python3-pandas python3-setuptools python3-wheel \
   && apt-get update \
   && apt_install_from_file "${APT_REQUIREMENTS_FILE}" \
-  && rm -rf /var/lib/apt/lists/* \
-  && python3 -m pip install python-baseconv \
-  && python3 -m pip install git+https://github.com/darcyabjones/gffpal.git
+  && rm -rf /var/lib/apt/lists/*

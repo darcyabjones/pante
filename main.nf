@@ -69,6 +69,8 @@ params.gypsydb_url = "http://gydb.org/gydbModules/collection/collection/db/GyDB_
 params.pfam_ids = "$baseDir/data/pfam_ids.txt"
 params.protein_families = "$baseDir/data/proteins/families.stk"
 
+params.min_intra_frequency = 3
+params.min_inter_proportion = 0.05
 
 params.trans_table = 1
 
@@ -1437,6 +1439,8 @@ process tidyMiteFinder {
  * exactly the same name, which should all have the same sequence
  * because they are named by the genomic coords that they were taken from.
  *
+ * I'm leaving out LTRdigest matches because they are usually very big,
+ * So would tend to merge tandem fragments.
  * TODO: filter out overlapping matches to have a single one per locus.
  */
 process combineTEPredictions {
@@ -1449,7 +1453,6 @@ process combineTEPredictions {
     input:
     file "in/*.fasta" from repeatModelerFasta
         .mix(
-            ltrDigestSeqs,
             eaHelitronSeqs,
             tidiedMiteFinderFasta,
             tidiedMMSeqsFastas,
@@ -1491,8 +1494,7 @@ process clusterSeqs {
     file "combined.fasta" from combinedSeqs
 
     output:
-    file "clusters" into clusteredSeqs
-    file "clusters.tsv"
+    set file("clusters.tsv"), file("clusters") into clusteredSeqs
 
     script:
     """
@@ -1507,6 +1509,38 @@ process clusterSeqs {
       --uc clusters.tsv \
       --strand "both" \
       --clusters "clusters/fam"
+    """
+}
+
+
+/*
+ * Filter clusters based on frequencies.
+ */
+process filterClusters {
+
+    label "python3"
+    label "small_task"
+
+    publishDir "${params.outdir}/pantes"
+
+    input:
+    set file("clusters.tsv"), file("clusters") from clusteredSeqs
+
+    output:
+    file "filtered_clusters_included" into filteredClusteredSeqs
+    file "filtered_clusters_excluded"
+    file "filtered_clusters.tsv"
+
+    script:
+    """
+    filter_clusters.py \
+      --outsel filtered_clusters_included \
+      --outexcl filtered_clusters_excluded \
+      --outtab filtered_clusters.tsv \
+      --min-intra "${params.min_intra_frequency}" \
+      --min-inter "${params.min_inter_proportion}" \
+      clusters.tsv \
+      clusters/*
     """
 }
 
@@ -1530,7 +1564,7 @@ process clusterMSAs {
     publishDir "${params.outdir}/pantes"
 
     input:
-    file "clusters" from clusteredSeqs
+    file "clusters" from filteredClusteredSeqs
 
     output:
     file "msas" into clusterAlignments
@@ -1672,8 +1706,14 @@ process runRepeatMaskerSpecies {
     set val(name), file(fasta) from genomes4RunRepeatMaskerSpecies
     file "rmlib" from rmlib
 
-    //output:
-    //set val(name), file("${name}") into repeatMasked
+    output:
+    set val(name), file("${name}_repeatmasker_species.txt") into repeatSpeciesMasked
+    file "${name}_repeatmasker_species_align.txt"
+    file "${name}_repeatmasker_species_masked.fasta"
+    file "${name}_repeatmasker_species_polyout.txt"
+    file "${name}_repeatmasker_species_repeat_densities.txt"
+    file "${name}_repeatmasker_species.txt"
+    file "${name}_repeatmasker_species.gff2"
 
     script:
     """
@@ -1686,14 +1726,20 @@ process runRepeatMaskerSpecies {
     RepeatMasker \
       -e ncbi \
       -pa "${task.cpus}" \
-      -xsmall \
       -species "${params.rm_species}" \
+      -xsmall \
       -poly \
       -gff \
       -alignments \
       -excln \
       "${fasta}"
 
+    mv "${fasta.name}.align" "${name}_repeatmasker_species_align.txt"
+    mv "${fasta.name}.masked" "${name}_repeatmasker_species_masked.fasta"
+    mv "${fasta.name}.polyout" "${name}_repeatmasker_species_polyout.txt"
+    mv "${fasta.name}.tbl" "${name}_repeatmasker_species_repeat_densities.txt"
+    mv "${fasta.name}.out" "${name}_repeatmasker_species.txt"
+    mv "${fasta.name}.out.gff" "${name}_repeatmasker_species.gff2"
     rm -rf -- rmlib_tmp
     """
 }
@@ -1715,8 +1761,14 @@ process runRepeatMasker {
     file "families_consensi.fasta.classified" from classifiedMsasConsensi
     file "rmlib" from rmlib
 
-    //output:
-    //set val(name), file("${name}") into repeatMasked
+    output:
+    set val(name), file("${name}_repeatmasker.txt") into repeatMasked
+    file "${name}_repeatmasker_align.txt"
+    file "${name}_repeatmasker_masked.fasta"
+    file "${name}_repeatmasker_polyout.txt"
+    file "${name}_repeatmasker_repeat_densities.txt"
+    file "${name}_repeatmasker.txt"
+    file "${name}_repeatmasker.gff2"
 
     script:
     """
@@ -1737,6 +1789,12 @@ process runRepeatMasker {
       -excln \
       "${fasta}"
 
+    mv "${fasta.name}.align" "${name}_repeatmasker_align.txt"
+    mv "${fasta.name}.masked" "${name}_repeatmasker_masked.fasta"
+    mv "${fasta.name}.polyout" "${name}_repeatmasker_polyout.txt"
+    mv "${fasta.name}.tbl" "${name}_repeatmasker_repeat_densities.txt"
+    mv "${fasta.name}.out" "${name}_repeatmasker.txt"
+    mv "${fasta.name}.out.gff" "${name}_repeatmasker.gff2"
     rm -rf -- rmlib_tmp
     """
 }

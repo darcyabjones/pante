@@ -202,7 +202,8 @@ RUN  chmod a+x "${RMASK_PREFIX}/prep_repeatmasker_lib.sh" \
   && sed -i 's~REPEATMASKER_DIR/Libraries~REPEATMASKER_LIB_DIR~' RepeatMasker \
   && sed -i '/use strict;$/a use lib $ENV{"RM_LIB"};' RepeatMasker \
   && sed -i '/use strict;$/a use lib $ENV{"RM_LIB"};' ProcessRepeats \
-  && sed -i 's~\$DIRECTORY/Libraries~$ENV{"RM_LIB"}~g' ProcessRepeats \
+  && sed -i 's~use lib "\$FindBin::RealBin/Libraries";~use lib $ENV{"RMLIB"} . "/Libraries";~' ProcessRepeats \
+  && sed -i 's~\$DIRECTORY/Libraries~" . $ENV{"RM_LIB"} . "~g' ProcessRepeats \
   && mv "${RMASK_PREFIX}/Libraries/RepeatPeps.lib" "${RMASK_PREFIX}" \
   && rm -rf -- "${RMASK_PREFIX}/Libraries" \
   && perl -i -0pe 's/^#\!.*perl.*/#\!\/usr\/bin\/env perl/g' \
