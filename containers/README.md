@@ -25,6 +25,7 @@ Replacing `v0.0.1` with whatever version you actually want.
 
 The final image contains:
 
+- [bedtools](https://bedtools.readthedocs.io)
 - [DECIPHER](http://www2.decipher.codes/)
 - [genometools](http://genometools.org/)
 - [gffpal](https://github.com/darcyabjones/gffpal)
@@ -117,8 +118,22 @@ This means that it can't be distributed by Docker or singularity hub.
 The default pipeline won't run RNAmmer for this reason.
 
 To use RNAmmer you can create the containers for them in this directory.
+Note that the order of execution here is important because of the way that make
+decides if it needs to rebuild anything.
+
 
 #### Step 1
+
+Download the source tar file `rnammer-1.2.src.tar.Z` into the `containers/sources` subfolder.
+Alternatively, you can provide the `RNAMMER_TAR` variable when you call `make`.
+
+Build the docker container for RNAmmer.
+
+```bash
+sudo make docker/rnammer
+```
+
+#### Step 2
 
 Pull the pre-build monolithic container from dockerhub.
 You could also build the containers yourself, but it takes an hour or two (Because of BLAST).
@@ -127,17 +142,17 @@ You could also build the containers yourself, but it takes an hour or two (Becau
 sudo make dockerpull/pante
 
 # or
-sudo make docker/all
+sudo make docker/pante
 
 # or
 sudo docker pull darcyabjones/pante-v0.0.1
 touch docker/pante  # This is important, otherwise the makefile won't work properly.
 ```
 
-#### Step 2
+#### Step 3
 
-Download the source tar file `rnammer-1.2.src.tar.Z` into the `containers/sources` subfolder.
-Alternatively, you can provide the `RNAMMER_TAR` variable when you call `make`.
+Update the monolithic container to include the RNAmmer software.
+Which we'll call "pante-plus".
 
 ```bash
 sudo make docker/pante-plus

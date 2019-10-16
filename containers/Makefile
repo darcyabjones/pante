@@ -15,6 +15,10 @@ GENOMETOOLS_VERSION=1.5.10
 GENOMETOOLS_URL=http://genometools.org/pub/genometools-$(GENOMETOOLS_VERSION).tar.gz
 GENOMETOOLS_PREFIX_ARG=$(INSTALL_BASE)/genometools/$(GENOMETOOLS_VERSION)
 
+BEDTOOLS_VERSION=2.28.0
+BEDTOOLS_URL=https://github.com/arq5x/bedtools2/releases/download/v2.28.0/bedtools-2.28.0.tar.gz
+BEDTOOLS_PREFIX_ARG=$(INSTALL_BASE)/bedtools/$(BEDTOOLS_VERSION)
+
 GFFPAL_COMMIT=4544248
 GFFPAL_REPO=https://github.com/darcyabjones/gffpal.git
 GFFPAL_PREFIX_ARG=$(INSTALL_BASE)/gffpal/$(GFFPAL_COMMIT)
@@ -124,7 +128,7 @@ REPBASE_URL=http://www.girinst.org/server/RepBase/protected/repeatmaskerlibrarie
 REPBASE_USERNAME:=
 REPBASE_PASSWORD:=
 
-GENERAL=base genometools python3 gffpal
+GENERAL=base bedtools genometools python3 gffpal
 NONCODING=infernal trnascan occultercut
 ALIGNMENT=rmblast vsearch decipher mmseqs
 ANNOTATION=repeatmasker eahelitron mitefinder
@@ -175,7 +179,7 @@ clean:
 	docker stop $(shell docker ps -aq) || true
 	docker rm $(shell docker ps -a -q) || true
 	docker rmi $(shell docker images -q) || true
-	singularity cache clean -a
+	singularity cache clean -f
 	rm -rf -- tmp
 	rm -rf -- docker
 
@@ -221,6 +225,19 @@ docker/base: base.Dockerfile
 docker/python3: python3.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --file $< \
+	  -t "$(call make_image_name,$@)" \
+	  .
+	@mkdir -p "$(dir $@)"
+	@touch $@
+
+
+docker/bedtools: bedtools.Dockerfile docker/base
+	docker build \
+	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg BEDTOOLS_VERSION="$(BEDTOOLS_VERSION)" \
+	  --build-arg BEDTOOLS_URL="$(BEDTOOLS_URL)" \
+	  --build-arg BEDTOOLS_PREFIX_ARG="$(BEDTOOLS_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -495,13 +512,16 @@ docker/occultercut: occultercut.Dockerfile docker/base
 
 # THE MONOLITH(s)
 
-docker/pante: docker/decipher docker/genometools docker/gffpal docker/hmmer3
-docker/pante: docker/infernal docker/mitefinder docker/mmseqs docker/occultercut
-docker/pante: docker/python3 docker/repeatmasker docker/rmblast docker/trnascan
-docker/pante: docker/vsearch
+docker/pante: docker/bedtools docker/decipher docker/genometools
+docker/pante: docker/gffpal docker/hmmer3 docker/infernal docker/mitefinder
+docker/pante: docker/mmseqs docker/occultercut docker/python3 docker/repeatmasker
+docker/pante: docker/rmblast docker/trnascan docker/vsearch
 docker/pante: pante.Dockerfile docker/base
 	docker build \
 	  --build-arg IMAGE="$(BASE_IMAGE)" \
+	  --build-arg BEDTOOLS_IMAGE="$(call make_image_name,bedtools)" \
+	  --build-arg BEDTOOLS_VERSION="$(BEDTOOLS_VERSION)" \
+	  --build-arg BEDTOOLS_PREFIX_ARG="$(BEDTOOLS_PREFIX_ARG)" \
 	  --build-arg DECIPHER_IMAGE="$(call make_image_name,decipher)" \
 	  --build-arg DECIPHER_VERSION="$(DECIPHER_VERSION)" \
 	  --build-arg DECIPHER_PREFIX_ARG="$(DECIPHER_PREFIX_ARG)" \

@@ -13,9 +13,11 @@ RUN  set -eu \
   && . /build/base.sh \
   && apt-get update \
   && apt-get install -y \
-      build-essential \
-      wget \
+       build-essential \
+       ca-certificates \
+       wget \
   && rm -rf /var/lib/apt/lists/* \
+  && update-ca-certificates \
   && wget -O occultercut.tar.gz "${OCCULTERCUT_URL}" \
   && tar -zxf occultercut.tar.gz \
   && cd OcculterCut* \

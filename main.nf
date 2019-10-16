@@ -72,7 +72,7 @@ params.pfam_ids = "$baseDir/data/pfam_ids.txt"
 params.protein_families = "$baseDir/data/proteins/families.stk"
 
 params.infernal_max_evalue = 0.00001
-params.mmseqs_max_evalue = 0.1
+params.mmseqs_max_evalue = 0.001
 
 params.min_intra_frequency = 3
 params.min_inter_proportion = 0.05
@@ -460,6 +460,7 @@ genomes.into {
     genomes4RunMiteFinder;
     genomes4GetMiteFinderGFFs;
     genomes4GetMiteFinderFastas;
+    genomes4GetSoftmaskedGenomes;
 }
 
 
@@ -683,7 +684,7 @@ process tidyInfernalMatches {
     tidy_infernal_gff.py \
       --go rfam2go \
       --best \
-      --source cmscan \
+      --source "Rfam" \
       --type nucleotide_match \
       -o tidied.gff3 \
       infernal.gff3
@@ -691,6 +692,9 @@ process tidyInfernalMatches {
 }
 
 
+/*
+ * Recombine infernal chunks into a single gff.
+ */
 process combineInfernal {
 
     label "genometools"
@@ -709,7 +713,7 @@ process combineInfernal {
     output:
     set val(name),
         val("noncoding"),
-        val("cmscan"),
+        val("Rfam"),
         val("rfam_cmscan"),
         file("rfam_cmscan.gff3") into infernalGFF
 
@@ -1051,10 +1055,10 @@ process getMMSeqsGenomes {
 }
 
 
-pfamMSAs.map { ["pfam", it] }
+pfamMSAs.map { ["Pfam", it] }
     .mix(
-        gypsyDBMSAs.map { ["gypsydb", it] },
-        proteinFamilies.map { ["protein_families", it] },
+        gypsyDBMSAs.map { ["GyDb", it] },
+        proteinFamilies.map { ["pante_protein_families", it] },
     )
     .into { msas4GetAttributes; msas4GetProfiles }
 
@@ -1145,9 +1149,11 @@ process searchProfilesVsGenomes {
     output:
     set val(db),
         val(name),
-        file("${name}_${db}_search.tsv") into mmseqsGenomeMatches
+        file("${name}_${file_db}_search.tsv") into mmseqsGenomeMatches
 
     script:
+    file_db = db.toLowerCase()
+
     """
     mkdir search tmp
 
@@ -1176,8 +1182,8 @@ process searchProfilesVsGenomes {
       --format-mode 0 \
       --format-output 'target,query,tstart,tend,tlen,qstart,qend,qlen,evalue,gapopen,pident,alnlen,raw,bits,cigar,mismatch,qcov,tcov'
 
-    sort -k1,1 -k3,3n -k4,4n -k2,2 search_tmp.tsv > "${name}_${db}_search.tsv"
-    sed -i '1i #target\tquery\ttstart\ttend\ttlen\tqstart\tqend\tqlen\tevalue\tgapopen\tpident\talnlen\traw\tbits\tcigar\tmismatch\tqcov\ttcov' "${name}_${db}_search.tsv"
+    sort -k1,1 -k3,3n -k4,4n -k2,2 search_tmp.tsv > "${name}_${file_db}_search.tsv"
+    sed -i '1i #target\tquery\ttstart\ttend\ttlen\tqstart\tqend\tqlen\tevalue\tgapopen\tpident\talnlen\traw\tbits\tcigar\tmismatch\tqcov\ttcov' "${name}_${file_db}_search.tsv"
     """
 }
 
@@ -1238,13 +1244,15 @@ process getMMSeqsGenomeFastas {
     set val(name),
         val("tes"),
         val(db),
-        val("${db}_search"),
+        val("${file_db}_search"),
         file("search.gff3.unclean") into mmseqsGenomeGFF
 
     set val(name),
-        file("${name}_${db}_search.fasta") into mmseqsGenomeFasta
+        file("${name}_${file_db}_search.fasta") into mmseqsGenomeFasta
 
     script:
+    file_db = db.toLowerCase()
+
     """
     gt gff3 \
       -tidy \
@@ -1260,7 +1268,7 @@ process getMMSeqsGenomeFastas {
       -seqfile genome.fasta \
       search.gff3.unclean \
     | fix_fasta_names.sh "${name}" \
-    > "${name}_${db}_search.fasta"
+    > "${name}_${file_db}_search.fasta"
     """
 }
 
@@ -2012,6 +2020,7 @@ process tidyGFFs {
                 rnammerGFF,
                 repeatModelerGFF,
                 mmseqsGenomeGFF,
+                ltrDigestGFF,
                 eaHelitronGFF,
                 miteFinderGFF4TidyGFF,
                 repeatMaskerGFF,
@@ -2019,7 +2028,6 @@ process tidyGFFs {
 
     output:
     set val(name),
-        val(folder),
         file("${name}_${analysis}.gff3") into tidiedGFFs
 
     script:
@@ -2048,14 +2056,44 @@ process combineGFFs {
     tag "${name}"
 
     input:
-    set val(name), val(folder), file("gffs/*.gff3") from tidiedGFFs
-            .groupTuple(by: [0, 1])
+    set val(name), file("gffs/*.gff3") from tidiedGFFs.groupTuple(by: 0)
 
     output:
-    set val(name), file("${name}_pante_${folder}.gff3")
+    set val(name), file("${name}_pante.gff3") into combinedGFF
 
     script:
     """
-    gt merge -tidy gffs/*.gff3 > "${name}_pante_${folder}.gff3"
+    gt merge -tidy gffs/*.gff3 > "${name}_pante.gff3"
+    """
+}
+
+
+/*
+ * Create a soft-masked fasta file given our repeat annotations.
+ */
+process getSoftmaskedGenomes {
+
+    label "bedtools"
+    label "small_task"
+
+    publishDir "${params.outdir}/final"
+    tag "${name}"
+
+    input:
+    set val(name),
+        file("genome.fasta"),
+        file("repeats.gff3") from genomes4GetSoftmaskedGenomes
+            .combine(combinedGFF, by: 0)
+
+    output:
+    file "${name}_softmasked.fasta"
+
+    script:
+    """
+    bedtools maskfasta \
+      -fi genome.fasta \
+      -bed repeats.gff3 \
+      -fo "${name}_softmasked.fasta" \
+      -soft
     """
 }
