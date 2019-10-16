@@ -176,112 +176,76 @@ class RMOut(object):
 
             if len(repeat_unit) == 1:
                 type_ = "monomeric_repeat"
-                ontology_terms.append("SO:0001934")
+                ontology_terms.extend(["SO:0001934", "SO:monomeric_repeat"])
             elif len(repeat_unit) < 10:
                 type_ = "microsatellite"
-                ontology_terms.append("SO:0000289")
+                ontology_terms.extend(["SO:0000289", "SO:microsatellite"])
             else:
                 type_ = "minisatellite"
-                ontology_terms.append("SO:0000643")
+                ontology_terms.extend(["SO:0000643", "SO:minisatellite"])
 
         elif self.kind == "Low_complexity":
             type_ = "low_complexity_region"
-            ontology_terms.append("SO:0001005")
-
-        elif self.kind == "Other/DNA_virus":
-            type_ = "viral_sequence"
-            ontology_terms.append("SO:0001041")
-            ontology_terms.append("SO:0000347")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("snRNA"):
-            type_ = "snRNA_gene"
-            ontology_terms.append("SO:0001268")
-            ontology_terms.append("SO:0000347")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("tRNA"):
-            type_ = "tRNA_gene"
-            ontology_terms.append("SO:0001272")
-            ontology_terms.append("SO:0000347")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("rRNA"):
-            type_ = "rRNA_gene"
-            ontology_terms.append("SO:0000347")
-            ontology_terms.append("SO:0001637")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("scRNA"):
-            type_ = "scRNA_gene"
-            ontology_terms.append("SO:0000347")
-            ontology_terms.append("SO:0001266")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("Segmental"):
-            type_ = "duplication"
-            ontology_terms.append("SO:0000347")
-            ontology_terms.append("SO:1000035")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("Satellite"):
-            type_ = "satellite_DNA"
-            ontology_terms.append("SO:0000347")
-            ontology_terms.append("SO:0000005")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("Retrotransposon"):
-            type_ = "retrotransposon"
-            ontology_terms.append("SO:0000347")
-            ontology_terms.append("SO:0000180")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("DNA"):
-            type_ = "DNA_transposon"
-            ontology_terms.append("SO:0000182")
-            ontology_terms.append("SO:0000347")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("LTR"):
-            type_ = "LTR_retrotransposon"
-            ontology_terms.append("SO:0000186")
-            ontology_terms.append("SO:0000347")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("LINE"):
-            type_ = "LINE_element"
-            ontology_terms.append("SO:0000194")
-            ontology_terms.append("SO:0000347")
-            custom["repeat_family"] = self.kind
-
-        elif self.kind.startswith("SINE"):
-            type_ = "SINE_element"
-            ontology_terms.append("SO:0000206")
-            ontology_terms.append("SO:0000347")
-            custom["repeat_family"] = self.kind
+            ontology_terms.extend(["SO:0001005", "SO:low_complexity_region"])
 
         else:
             type_ = "nucleotide_match"
-            ontology_terms.append("SO:0000347")
+            ontology_terms.extend(["SO:0000347", "SO:nucleotide_match"])
             custom["repeat_family"] = self.kind
+
+        if self.kind == "Other/DNA_virus":
+            ontology_terms.extend(["SO:0001041", "SO:viral_sequence"])
+
+        elif self.kind.startswith("snRNA"):
+            ontology_terms.extend(["SO:0001268", "SO:snRNA_gene"])
+
+        elif self.kind.startswith("tRNA"):
+            ontology_terms.extend(["SO:0001272", "SO:tRNA_gene"])
+
+        elif self.kind.startswith("rRNA"):
+            ontology_terms.extend(["SO:0001637", "SO:rRNA_gene"])
+
+        elif self.kind.startswith("scRNA"):
+            ontology_terms.extend(["SO:0001266", "SO:scRNA_gene"])
+
+        elif self.kind.startswith("Segmental"):
+            ontology_terms.extend(["SO:1000035", "SO:duplication"])
+
+        elif self.kind.startswith("Satellite"):
+            type_ = "satellite_DNA"
+            ontology_terms.extend(["SO:0000005", "SO:satellite_DNA"])
+            del custom["repeat_family"]
+
+        elif self.kind.startswith("Retrotransposon"):
+            ontology_terms.extend(["SO:0000180", "SO:retrotransposon"])
+
+        elif self.kind.startswith("DNA"):
+            ontology_terms.extend(["SO:0000182", "SO:DNA_transposon"])
+
+        elif self.kind.startswith("LTR"):
+            ontology_terms.extend(["SO:0000186", "SO:LTR_retrotransposon"])
+
+        elif self.kind.startswith("LINE"):
+            ontology_terms.extend(["SO:0000194", "SO:LINE_element"])
+
+        elif self.kind.startswith("SINE"):
+            ontology_terms.extend(["SO:0000206", "SO:SINE_element"])
 
         if "helitron" in self.kind.lower():
             type_ = "helitron"
-            ontology_terms.append("SO:0000544")
+            ontology_terms.extend(["SO:0000544", "SO:helitron"])
 
         if ("maverick" in self.kind.lower()
                 or "polinton" in self.kind.lower()):
             type_ = "polinton"
-            ontology_terms.append("SO:0001170")
+            ontology_terms.extend(["SO:0001170", "SO:polinton"])
 
         if "mite" in self.kind.lower():
-            type_ = "MITE"
-            ontology_terms.append("SO:0000338")
+            ontology_terms.extend(["SO:0000338", "SO:MITE"])
 
         if (self.kind.lower().endswith("/P")
                 or self.kind.lower().endswith("P-Fungi")):
-            type_ = "p_element"
-            ontology_terms.append("SO:0001535")
+            ontology_terms.extend(["SO:0001535", "SO:p_element"])
 
         attributes = GFFAttributes(
             name=self.family,

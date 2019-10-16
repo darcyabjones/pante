@@ -59,7 +59,7 @@ def main():
 
         mrna.type = "helitron"
         mrna.attributes.id = f"helitron{counter}"
-        mrna.attributes.ontology_term = ["SO:0000544"]
+        mrna.attributes.ontology_term = ["SO:0000544", "SO:helitron"]
         mrna.attributes.custom = {}
 
         flank3 = [c for c in mrna.children
@@ -68,12 +68,22 @@ def main():
                   if c.attributes.id.endswith(".5.1")][0]
 
         flank3.type = "three_prime_flanking_region"
-        flank3.attributes.ontology_term = ["SO:0001417", "SO:0000364"]
+        flank3.attributes.ontology_term = [
+            "SO:0001417",
+            "SO:three_prime_flanking_region",
+            "SO:0000364",
+            "SO:transposable_element_flanking_region"
+        ]
         flank3.attributes.id = None
         flank3.attributes.parent = [mrna.attributes.id]
 
         flank5.type = "five_prime_flanking_region"
-        flank5.attributes.ontology_term = ["SO:0001416", "SO:0000364"]
+        flank5.attributes.ontology_term = [
+            "SO:0001416",
+            "SO:five_prime_flanking_region",
+            "SO:0000364",
+            "SO:transposable_element_flanking_region"
+        ]
         flank5.attributes.id = None
         flank5.attributes.parent = [mrna.attributes.id]
 

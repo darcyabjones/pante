@@ -55,6 +55,8 @@ def main():
 
             elif line.startswith("#=GF AC"):
                 block["ID"] = sline.split("AC", maxsplit=1)[-1].strip()
+                if block["ID"].startswith("PF"):
+                    block["Dbxref"].append("Pfam:" + block["ID"])
 
             elif line.startswith("#=GF DE"):
                 block["Alias"] = sline.split("DE", maxsplit=1)[-1].strip()
@@ -64,7 +66,7 @@ def main():
                 sacc_line = acc_line.split(";")
                 acc = sacc_line[0].strip() + ":" + sacc_line[1].strip()
 
-                if acc.startswith("SO"):
+                if acc.startswith("SO") or acc.startswith("GO"):
                     block["Ontology_term"].append(acc)
                 else:
                     block["Dbxref"].append(acc)

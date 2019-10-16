@@ -60,6 +60,8 @@ params.rfam = false
 params.rfam_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz"
 params.rfam_clanin = false
 params.rfam_clanin_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.clanin"
+params.rfam_gomapping = false
+params.rfam_gomapping_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/rfam2go/rfam2go"
 params.rnammer = false
 
 
@@ -92,6 +94,9 @@ params.mitefinder_threshold = 0.5
 params.trans_table = 1
 
 def run_infernal = !params.noinfernal
+
+
+def exclude_unclean = { filename -> filename.endsWith(".unclean") ? null : filename }
 
 
 if ( params.genomes ) {
@@ -266,6 +271,32 @@ if ( params.rfam && params.rfam_clanin ) {
 }
 
 
+if ( params.rfam_gomapping ) {
+    Channel
+        .value(file(params.rfam_gomapping, checkIfExists: true))
+        .set { rfam2GO }
+} else if ( run_infernal ) {
+
+    process getRfam2GO {
+
+        label "download"
+        label "small_task"
+
+        publishDir "${params.outdir}/downloads"
+
+        output:
+        file "rfam2go" into rfam2GO
+
+        script:
+        """
+        wget -O rfam2go "${params.rfam_gomapping_url}"
+        """
+    }
+} else {
+    rfam2GO = Channel.empty()
+}
+
+
 if ( params.pfam ) {
     Channel
         .fromPath( params.pfam, checkIfExists: true, type: "file")
@@ -422,13 +453,13 @@ genomes.into {
     genomes4RunRepeatMasker;
     genomes4RunRepeatModeler;
     genomes4GetMMSeqsGenomes;
-    genomes4TidyMMSeqsGFFs;
+    genomes4GetMMSeqsGenomeFastas;
     genomes4GetGtSuffixArrays;
     genomes4RunLtrHarvest;
     genomes4RunEAHelitron;
-    genomes4MiteFinder;
-    genomes4GetMiteFinderGFF;
-    genomes4TidyMiteFinder;
+    genomes4RunMiteFinder;
+    genomes4GetMiteFinderGFFs;
+    genomes4GetMiteFinderFastas;
 }
 
 
@@ -459,7 +490,7 @@ process runTRNAScan {
         file("${name}_trnascan.txt"),
         file("${name}_trnascan_ss.txt") into tRNAScanResults
 
-    set val(name), file("${name}_trnascan.fasta") into tRNAScanSeqs
+    set val(name), file("${name}_trnascan.fasta") into tRNAScanFasta
 
     file "${name}_trnascan_iso.txt"
     file "${name}_trnascan_stats.txt"
@@ -492,19 +523,21 @@ process getTRNAScanGFF {
     label "gffpal"
     label "small_task"
 
-    publishDir "${params.outdir}/noncoding/${name}"
-
-    tag { name }
+    tag "${name}"
 
     input:
     set val(name), file("ts.txt"), file("ss.txt") from tRNAScanResults
 
     output:
-    set val(name), file("${name}_trnascan.gff3") into tRNAScanGFF
+    set val(name),
+        val("noncoding"),
+        val("tRNAScan-SE"),
+        val("trnascan"),
+        file("trnascan.gff3") into tRNAScanGFF
 
     script:
     """
-    gffpal trnascan2gff -o "${name}_trnascan.gff3" ts.txt ss.txt
+    gffpal trnascan2gff -o "trnascan.gff3" ts.txt ss.txt
     """
 }
 
@@ -580,7 +613,7 @@ process runInfernal {
 
     tag "${name}"
 
-    publishDir "${params.outdir}/noncoding/${name}"
+    publishDir "${params.outdir}/noncoding/${name}", saveAs: exclude_unclean
 
     when:
     run_infernal
@@ -594,7 +627,7 @@ process runInfernal {
     file "rfam" from pressedRfam
 
     output:
-    set val(name), file("${name}_rfam_cmscan.gff3") into infernalMatches
+    set val(name), file("cmscan.gff3.unclean") into infernalMatches
     file "${name}_rfam_cmscan.tblout"
     file "${name}_rfam_cmscan.out"
 
@@ -624,10 +657,72 @@ process runInfernal {
       --all \
       -E "${params.infernal_max_evalue}" \
       filtered.txt \
-    | awk -F'\\t' 'BEGIN {OFS="\\t"} { \$9=gensub(":", "=", "g", \$9); print }' \
-    > "${name}_rfam_cmscan.gff3"
+    > "cmscan.gff3.unclean"
 
     rm filtered.txt
+    """
+}
+
+
+process tidyInfernalMatches {
+
+    label "gffpal"
+    label "small_task"
+
+    tag "${name}"
+
+    input:
+    set val(name), file("infernal.gff3") from infernalMatches
+    file "rfam2go" from rfam2GO
+
+    output:
+    set val(name), val("tidied.gff3") into tidiedInfernalMatches
+
+    script:
+    """
+    tidy_infernal_gff.py \
+      --go rfam2go \
+      --best \
+      --source cmscan \
+      --type nucleotide_match \
+      -o tidied.gff3 \
+      infernal.gff3
+    """
+}
+
+
+process combineInfernal {
+
+    label "genometools"
+    label "small_task"
+
+    tag "${name}"
+
+    when:
+    run_infernal
+
+    input:
+    set val(name),
+        file("unclean/*.gff3") from tidiedInfernalMatches
+            .groupTuple(by: 0)
+
+    output:
+    set val(name),
+        val("noncoding"),
+        val("cmscan"),
+        val("rfam_cmscan"),
+        file("rfam_cmscan.gff3") into infernalGFF
+
+    script:
+    """
+    mkdir clean
+
+    for f in unclean/*.gff3
+    do
+      gt gff3 -tidy -sort "\${f}" > "clean/\$(basename \${f})"
+    done
+
+    gt merge -tidy clean/*.gff3 > "rfam_cmscan.gff3"
     """
 }
 
@@ -642,7 +737,7 @@ process runRNAmmer {
     label "rnammer"
     label "small_task"
 
-    publishDir "${params.outdir}/noncoding/${name}"
+    publishDir "${params.outdir}/noncoding/${name}", saveAs: exclude_unclean
 
     tag "${name}"
 
@@ -653,14 +748,14 @@ process runRNAmmer {
     set val(name), file(fasta) from genomes4RunRNAmmer
 
     output:
-    set val(name), file("${name}_rnammer.gff2") into rnammerResults
+    set val(name), file("rnammer.gff2.unclean") into rnammerResults
     file "${name}_rnammer.hmmreport"
 
     """
     rnammer \
       -S euk \
       -m lsu,ssu,tsu \
-      -gff "${name}_rnammer.gff2" \
+      -gff "rnammer.gff2.unclean" \
       -h "${name}_rnammer.hmmreport" \
       "${fasta}"
     """
@@ -675,19 +770,22 @@ process getRNAmmerGFF {
     label "gffpal"
     label "small_task"
 
-    publishDir "${params.outdir}/noncoding/${name}"
 
-    tag { name }
+    tag "${name}"
 
     input:
     set val(name), file("rnammer.gff2") from rnammerResults
 
     output:
-    set val(name), file("${name}_rnammer.gff3") into rnammerGFF
+    set val(name),
+        val("noncoding"),
+        val("RNAmmer"),
+        val("rnammer"),
+        file("rnammer.gff3") into rnammerGFF
 
     script:
     """
-    gffpal rnammer2gff -k euk -o "${name}_rnammer.gff3" rnammer.gff2
+    gffpal rnammer2gff -k euk -o "rnammer.gff3" rnammer.gff2
     """
 }
 
@@ -826,7 +924,7 @@ process runRepeatModeler {
 
     output:
     set val(name),
-        file("${name}_repeatmodeler_msa.stk") optional true into repeatModelerSeqs
+        file("${name}_repeatmodeler.stk") optional true into repeatModelerStks
     file "${name}_repeatmodeler_consensus.fasta" optional true
 
     script:
@@ -853,11 +951,17 @@ process runRepeatModeler {
 
     if [ -e "${name}-families.stk" ]
     then
-      mv "${name}-families.stk" "${name}_repeatmodeler_msa.stk"
+      mv "${name}-families.stk" "${name}_repeatmodeler.stk"
     fi
 
     rm -rf -- rmlib_tmp
     """
+}
+
+
+repeatModelerStks.into {
+    repeatModelerStks4GetFasta;
+    repeatModelerStks4GetGFF;
 }
 
 
@@ -873,16 +977,46 @@ process getRepeatModelerFasta {
     publishDir "${params.outdir}/tes/${name}"
 
     input:
-    set val(name), file(stk) from repeatModelerSeqs
+    set val(name), file("in.stk") from repeatModelerStks4GetFasta
 
     output:
     set val(name), file("${name}_repeatmodeler.fasta") into repeatModelerFasta
 
     script:
     """
-    stk2fasta.py "${stk}" \
+    stk2fasta.py "in.stk" \
     | sed "s/^>/>${name}:/" \
     > "${name}_repeatmodeler.fasta"
+    """
+}
+
+
+/*
+ * Convert the RepeatModeler STK to a GFF3 (as best as we can).
+ */
+process getRepeatModelerGFF {
+
+    label "gffpal"
+    label "small_task"
+    tag "${name}"
+
+    input:
+    set val(name), file("in.stk") from repeatModelerStks4GetGFF
+
+    output:
+    set val(name),
+        val("tes"),
+        val("RepeatModeler"),
+        val("repeatmodeler"),
+        file("repeatmodeler.gff3") into repeatModelerGFF
+
+    script:
+    """
+    repeatmodeler2gff.py \
+      -s RepeatModeler \
+      -t repeat_region \
+      -o repeatmodeler.gff3 \
+      in.stk
     """
 }
 
@@ -1051,7 +1185,7 @@ process searchProfilesVsGenomes {
 /*
  * Convert MMSeqs matches to a gff3 file.
  */
-process getMMSeqsGFFs {
+process getMMSeqsGenomeGFFs {
 
     label "gffpal"
     label "small_task"
@@ -1068,14 +1202,14 @@ process getMMSeqsGFFs {
     output:
     set val(name),
         val(db),
-        file("${name}_${db}_search.gff3") into mmseqsGFFs
+        file("search.gff3") into mmseqsGenomeGFFUnclean
 
     script:
     """
     mmseqs2gff.py \
       -s "${db}" \
       -a attributes.tsv \
-      -o "${name}_${db}_search.gff3" \
+      -o "search.gff3" \
       search.tsv
     """
 }
@@ -1084,48 +1218,47 @@ process getMMSeqsGFFs {
 /*
  * Get the sequences and make the GFF3 compliant.
  */
-process tidyMMSeqsGFFs {
+process getMMSeqsGenomeFastas {
 
     label "genometools"
     label "small_task"
 
     tag "${name} - ${db}"
 
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean
 
     input:
     set val(name),
         val(db),
         file("input.gff3"),
-        file("genome.fasta") from mmseqsGFFs
-            .combine(genomes4TidyMMSeqsGFFs, by: 0)
+        file("genome.fasta") from mmseqsGenomeGFFUnclean
+            .combine(genomes4GetMMSeqsGenomeFastas, by: 0)
 
     output:
-    set val(db),
-        val(name),
-        file("${name}_${db}_search.gff3") into tidiedMMSeqsGFFs
+    set val(name),
+        val("tes"),
+        val(db),
+        val("${db}_search"),
+        file("search.gff3.unclean") into mmseqsGenomeGFF
 
     set val(name),
-        file("${name}_${db}_search.fasta") into tidiedMMSeqsFastas
+        file("${name}_${db}_search.fasta") into mmseqsGenomeFasta
 
     script:
-    def max_match_score = 0.00005
     """
     gt gff3 \
       -tidy \
       -sort \
       input.gff3 \
-    > "${name}_${db}_search.gff3"
+    > search.gff3.unclean
 
-    awk -F'\\t' '\$6 <= ${max_match_score}' input.gff3 \
-    | gt gff3 -tidy -sort - \
-    | gt extractfeat \
+    gt extractfeat \
       -type nucleotide_to_protein_match \
       -matchdescstart \
       -seqid \
       -coords \
       -seqfile genome.fasta \
-      - \
+      search.gff3.unclean \
     | fix_fasta_names.sh "${name}" \
     > "${name}_${db}_search.fasta"
     """
@@ -1187,15 +1320,12 @@ process runLtrHarvest {
     label "small_task"
 
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
 
     input:
     set val(name), file(fasta), file("*") from gtSuffixArrays4RunLtrHarvest
 
     output:
-    set val(name), file("${name}_ltrharvest.gff3") into ltrHarvestResults
-    set val(name), file("${name}_ltrharvest.fasta")
-    set val(name), file("${name}_ltrharvest_inner.fasta")
+    set val(name), file("ltrharvest.gff3") into ltrHarvestResults
 
     """
     gt ltrharvest \
@@ -1208,16 +1338,14 @@ process runLtrHarvest {
       -mintsd "${params.ltrharvest_mintsd}" \
       -maxtsd "${params.ltrharvest_maxtsd}" \
       -index "${fasta}" \
-      -gff3 "${name}_ltrharvest_tmp.gff3" \
-      -out "${name}_ltrharvest.fasta" \
-      -outinner "${name}_ltrharvest_inner.fasta"
+      -gff3 "ltrharvest_tmp.gff3"
 
     gt gff3 \
       -tidy \
       -sort \
       -retainids \
-      "${name}_ltrharvest_tmp.gff3" \
-    > "${name}_ltrharvest.gff3"
+      "ltrharvest_tmp.gff3" \
+    > "ltrharvest.gff3"
     """
 }
 
@@ -1236,7 +1364,7 @@ process runLtrDigest {
     label "genometools"
     label "small_task"
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean
 
     input:
     set val(name),
@@ -1245,16 +1373,20 @@ process runLtrDigest {
         file("${name}_ltrharvest.gff3"),
         file("trna.fasta") from gtSuffixArrays4RunLtrDigest
             .combine(ltrHarvestResults, by: 0)
-            .combine(tRNAScanSeqs, by: 0)
+            .combine(tRNAScanFasta, by: 0)
 
     output:
-    set val(name), file("${name}_ltrdigest_nice_names.fasta") into ltrDigestSeqs
-    set val(name), file("${name}_ltrdigest.gff3") into ltrDigestGFF
+    set val(name), file("${name}_ltrdigest.fasta") into ltrDigestFasta
+    set val(name),
+        val("tes"),
+        val("KEEP"),
+        val("ltrdigest"),
+        file("ltrdigest.gff3.unclean") into ltrDigestGFF
+
     file "${name}_ltrdigest_complete.fas"
     file "${name}_ltrdigest_3ltr.fas"
     file "${name}_ltrdigest_5ltr.fas"
     file "${name}_ltrdigest_conditions.csv"
-    file "${name}_ltrdigest_ppt.fas" optional true
     file "${name}_ltrdigest_tabout.csv"
 
     script:
@@ -1267,14 +1399,14 @@ process runLtrDigest {
       -matchdescstart \
       -seqfile "${fasta}" \
       "${name}_ltrharvest.gff3" \
-    > "${name}_ltrdigest_tmp.gff3"
+    > "ltrdigest_tmp.gff3"
 
     gt gff3 \
       -tidy \
       -sort \
       -retainids \
-      "${name}_ltrdigest_tmp.gff3" \
-    > "${name}_ltrdigest.gff3"
+      "ltrdigest_tmp.gff3" \
+    > "ltrdigest.gff3.unclean"
 
     gt extractfeat \
       -type repeat_region \
@@ -1282,9 +1414,9 @@ process runLtrDigest {
       -seqid \
       -coords \
       -seqfile "${fasta}" \
-      "${name}_ltrdigest.gff3" \
+      "ltrdigest.gff3.unclean" \
     | fix_fasta_names.sh "${name}" \
-    > "${name}_ltrdigest_nice_names.fasta"
+    > "${name}_ltrdigest.fasta"
 
     rm -rf -- tmp
     """
@@ -1306,14 +1438,14 @@ process runEAHelitron {
     label "eahelitron"
     label "small_task"
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean
 
     input:
     set val(name), file(fasta) from genomes4RunEAHelitron
 
     output:
-    set val(name), file("${name}_eahelitron_complete.fasta") into eaHelitronSeqs
-    set val(name), file("${name}_eahelitron.gff3") into eaHelitronGFF
+    set val(name), file("${name}_eahelitron.fasta") into eaHelitronFasta
+    set val(name), file("eahelitron.gff3.unclean") into eaHelitronUncleanGFF
     file "${name}_eahelitron.5.fa"
     file "${name}_eahelitron.3.txt"
     file "${name}_eahelitron.5.txt"
@@ -1338,7 +1470,9 @@ process runEAHelitron {
       }
       { print }
     ' < "${name}_eahelitron.5.fa" \
-    > "${name}_eahelitron_complete.fasta"
+    > "${name}_eahelitron.fasta"
+
+    mv "${name}_eahelitron.gff3" "eahelitron.gff3.unclean"
     """
 }
 
@@ -1347,19 +1481,22 @@ process filterEAHelitronGFF {
 
     label "gffpal"
     label "small_task"
-    publishDir "${params.outdir}/tes/${name}"
+
     tag "${name}"
 
     input:
-    set val(name), file("in.gff") from eaHelitronGFF
+    set val(name), file("in.gff") from eaHelitronUncleanGFF
 
     output:
     set val(name),
-        file("${name}_eahelitron_filtered.gff3") into eaHelitronFilteredGFF
+        val("tes"),
+        val("EAhelitron"),
+        val("eahelitron"),
+        file("eahelitron.gff3") into eaHelitronGFF
 
     script:
     """
-    filter_eahelitron_gff.py -o "${name}_eahelitron_filtered.gff3" in.gff
+    filter_eahelitron_gff.py -o "eahelitron.gff3" in.gff
     """
 }
 
@@ -1376,20 +1513,19 @@ process runMiteFinder {
     label "mitefinder"
     label "small_task"
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
 
     input:
-    set val(name), file(genome) from genomes4MiteFinder
+    set val(name), file(genome) from genomes4RunMiteFinder
     file "pattern_scoring.txt" from miteFinderProfiles
 
     output:
-    set val(name), file("${name}_mitefinder.fasta") into miteFinderFasta
+    set val(name), file("mitefinder.fasta") into miteFinderResults
 
     script:
     """
     miteFinder \
       -input "${genome}" \
-      -output "${name}_mitefinder.fasta" \
+      -output "mitefinder.fasta" \
       -pattern_scoring pattern_scoring.txt \
       -threshold "${params.mitefinder_threshold}"
     """
@@ -1399,7 +1535,7 @@ process runMiteFinder {
 /*
  * Construct a gff from the mitefinder fasta descriptions.
  */
-process getMiteFInderGFF {
+process getMiteFInderGFFs {
 
     label "gffpal"
     label "small_task"
@@ -1408,11 +1544,12 @@ process getMiteFInderGFF {
     input:
     set val(name),
         file("in.fasta"),
-        file("genome.fasta") from miteFinderFasta
-            .combine(genomes4GetMiteFinderGFF, by: 0)
+        file("genome.fasta") from miteFinderResults
+            .combine(genomes4GetMiteFinderGFFs, by: 0)
 
     output:
-    set val(name), file("out.gff3") into miteFinderGFF
+    set val(name),
+        file("out.gff3") into miteFinderGFF
 
     script:
     """
@@ -1421,11 +1558,17 @@ process getMiteFInderGFF {
 }
 
 
+miteFinderGFF
+    .tap { miteFinderGFF4GetMiteFinderFasta }
+    .map { n, g -> [n, "tes", "MiteFinderII", "mitefinder", g] }
+    .set { miteFinderGFF4TidyGFF }
+
+
 /*
  * Make the mitefinder gffs compliant, and extract new sequences
  * with new names.
  */
-process tidyMiteFinder {
+process getMiteFinderFastas {
 
     label "genometools"
     label "small_task"
@@ -1435,13 +1578,12 @@ process tidyMiteFinder {
     input:
     set val(name),
         file("in.gff3"),
-        file("genome.fasta") from miteFinderGFF
-            .combine(genomes4TidyMiteFinder, by: 0)
+        file("genome.fasta") from miteFinderGFF4GetMiteFinderFasta
+            .combine(genomes4GetMiteFinderFastas, by: 0)
 
     output:
     set val(name),
-        file("${name}_mitefinder_nice_names.fasta") into tidiedMiteFinderFasta
-    set val(name), file("${name}_mitefinder.gff3") into tidiedMiteFinderGFF
+        file("${name}_mitefinder.fasta") into miteFinderFasta
 
     script:
     """
@@ -1449,17 +1591,15 @@ process tidyMiteFinder {
       -tidy \
       -sort \
       "in.gff3" \
-    > "${name}_mitefinder.gff3"
-
-    gt extractfeat \
+    | gt extractfeat \
       -type repeat_region \
       -matchdescstart \
       -seqid \
       -coords \
       -seqfile "genome.fasta" \
-      "${name}_mitefinder.gff3" \
+      - \
     | fix_fasta_names.sh "${name}" \
-    > "${name}_mitefinder_nice_names.fasta"
+    > "${name}_mitefinder.fasta"
     """
 }
 
@@ -1473,7 +1613,7 @@ process tidyMiteFinder {
  * So would tend to merge tandem fragments.
  * TODO: filter out overlapping matches to have a single one per locus.
  */
-process combineTEPredictions {
+process combineTEFastas {
 
     label "posix"
     label "small_task"
@@ -1483,15 +1623,15 @@ process combineTEPredictions {
     input:
     file "in/*.fasta" from repeatModelerFasta
         .mix(
-            eaHelitronSeqs,
-            tidiedMiteFinderFasta,
-            tidiedMMSeqsFastas,
+            eaHelitronFasta,
+            miteFinderFasta,
+            mmseqsGenomeFasta,
         )
         .map { n, f -> f }
         .collect()
 
     output:
-    file "combined_tes.fasta" into combinedSeqs
+    file "combined_tes.fasta" into combinedTEFasta
 
     script:
     """
@@ -1513,7 +1653,7 @@ process combineTEPredictions {
  * After this point, we could filter by frequency per-genome and within the
  * population. This requires that we de-duplicate loci first.
  */
-process clusterSeqs {
+process clusterTEFastas {
 
     label "vsearch"
     label "medium_task"
@@ -1521,10 +1661,10 @@ process clusterSeqs {
     publishDir "${params.outdir}/pantes"
 
     input:
-    file "combined.fasta" from combinedSeqs
+    file "combined.fasta" from combinedTEFasta
 
     output:
-    set file("clusters.tsv"), file("clusters") into clusteredSeqs
+    set file("clusters.tsv"), file("clusters") into clusteredTEFasta
 
     script:
     """
@@ -1546,7 +1686,7 @@ process clusterSeqs {
 /*
  * Filter clusters based on frequencies.
  */
-process filterClusters {
+process filterTEClusters {
 
     label "python3"
     label "small_task"
@@ -1554,10 +1694,10 @@ process filterClusters {
     publishDir "${params.outdir}/pantes"
 
     input:
-    set file("clusters.tsv"), file("clusters") from clusteredSeqs
+    set file("clusters.tsv"), file("clusters") from clusteredTEFasta
 
     output:
-    file "filtered_clusters_included" into filteredClusteredSeqs
+    file "filtered_clusters_included" into filteredTEClusters
     file "filtered_clusters_excluded"
     file "filtered_clusters.tsv"
 
@@ -1586,7 +1726,7 @@ process filterClusters {
  * convert these MSAs to HMMs and search HMM vs consensus sequences
  * using nhmmer?
  */
-process clusterMSAs {
+process getClusterMSAs {
 
     label "decipher"
     label "big_task"
@@ -1594,10 +1734,10 @@ process clusterMSAs {
     publishDir "${params.outdir}/pantes"
 
     input:
-    file "clusters" from filteredClusteredSeqs
+    file "clusters" from filteredTEClusters
 
     output:
-    file "msas" into clusterAlignments
+    file "msas" into clusterMSA
 
     script:
     """
@@ -1612,9 +1752,9 @@ process clusterMSAs {
 }
 
 
-clusterAlignments.into {
-    clusterAlignments4Consensus;
-    clusterAlignments4Stockholm;
+clusterMSA.into {
+    clusterMSA4GetClusterMSAConsensus;
+    clusterMSA4GetClusterMSAStockholm;
 }
 
 
@@ -1626,7 +1766,7 @@ clusterAlignments.into {
  * Ties are broken by selecting the first match in the following order
  * N, A, C, G, T
  */
-process clusterMSAsConsensus {
+process getClusterMSAConsensus {
 
     label "decipher"
     label "medium_task"
@@ -1634,10 +1774,10 @@ process clusterMSAsConsensus {
     publishDir "${params.outdir}/pantes"
 
     input:
-    file "msas" from clusterAlignments4Consensus
+    file "msas" from clusterMSA4GetClusterMSAConsensus
 
     output:
-    file "families_consensi.fasta" into msasConsensi
+    file "families_consensi.fasta" into clusterMSAConsensus
 
     script:
     """
@@ -1659,7 +1799,7 @@ process clusterMSAsConsensus {
  * Convert the fasta multiple sequence alignments to a single stockholm MSA
  * file.
  */
-process clusterMSAsStockholm {
+process getClusterMSAStockholm {
 
     label "python3"
     label "small_task"
@@ -1667,10 +1807,10 @@ process clusterMSAsStockholm {
     publishDir "${params.outdir}/pantes"
 
     input:
-    file "msas" from clusterAlignments4Stockholm
+    file "msas" from clusterMSA4GetClusterMSAStockholm
 
     output:
-    file "families.stk" into clusterStockholm
+    file "families.stk" into clusterMSAStockholm
 
     script:
     """
@@ -1695,13 +1835,13 @@ process runRepeatClassifier {
     publishDir "${params.outdir}/pantes"
 
     input:
-    file "families_consensi.fasta" from msasConsensi
-    file "families.stk" from clusterStockholm
+    file "families_consensi.fasta" from clusterMSAConsensus
+    file "families.stk" from clusterMSAStockholm
     file "rmlib" from rmlib
 
     output:
-    file "families_consensi.fasta.classified" into classifiedMsasConsensi
-    file "families-classified.stk"
+    file "families_classified_consensi.fasta" into repeatClassifierResults
+    file "families_classified.stk"
 
     script:
     """
@@ -1712,6 +1852,9 @@ process runRepeatClassifier {
       -engine ncbi \
       -consensi families_consensi.fasta \
       -stockholm families.stk
+
+    mv families_consensi.fasta.classified families_classified_consensi.fasta
+    mv families-classified.stk families_classified.stk
 
     rm -rf -- rmlib_tmp
     """
@@ -1740,13 +1883,10 @@ process runRepeatMaskerSpecies {
     file "rmlib" from rmlib
 
     output:
-    set val(name), file("${name}_repeatmasker_species.txt") into repeatSpeciesMasked
+    set val(name), file("${name}_repeatmasker_species.txt") into repeatMaskerSpeciesResults
     file "${name}_repeatmasker_species_align.txt"
     file "${name}_repeatmasker_species_masked.fasta"
-    file "${name}_repeatmasker_species_polyout.txt"
     file "${name}_repeatmasker_species_repeat_densities.txt"
-    file "${name}_repeatmasker_species.txt"
-    file "${name}_repeatmasker_species.gff2"
 
     script:
     """
@@ -1761,7 +1901,6 @@ process runRepeatMaskerSpecies {
       -pa "${task.cpus}" \
       -species "${params.rm_species}" \
       -xsmall \
-      -poly \
       -gff \
       -alignments \
       -excln \
@@ -1769,10 +1908,8 @@ process runRepeatMaskerSpecies {
 
     mv "${fasta.name}.align" "${name}_repeatmasker_species_align.txt"
     mv "${fasta.name}.masked" "${name}_repeatmasker_species_masked.fasta"
-    mv "${fasta.name}.polyout" "${name}_repeatmasker_species_polyout.txt"
     mv "${fasta.name}.tbl" "${name}_repeatmasker_species_repeat_densities.txt"
     mv "${fasta.name}.out" "${name}_repeatmasker_species.txt"
-    mv "${fasta.name}.out.gff" "${name}_repeatmasker_species.gff2"
     rm -rf -- rmlib_tmp
     """
 }
@@ -1791,17 +1928,14 @@ process runRepeatMasker {
 
     input:
     set val(name), file(fasta) from genomes4RunRepeatMasker
-    file "families_consensi.fasta.classified" from classifiedMsasConsensi
+    file "families_consensi.fasta" from repeatClassifierResults
     file "rmlib" from rmlib
 
     output:
-    set val(name), file("${name}_repeatmasker.txt") into repeatMasked
+    set val(name), file("${name}_repeatmasker.txt") into repeatMaskerResults
     file "${name}_repeatmasker_align.txt"
     file "${name}_repeatmasker_masked.fasta"
-    file "${name}_repeatmasker_polyout.txt"
     file "${name}_repeatmasker_repeat_densities.txt"
-    file "${name}_repeatmasker.txt"
-    file "${name}_repeatmasker.gff2"
 
     script:
     """
@@ -1814,53 +1948,97 @@ process runRepeatMasker {
     RepeatMasker \
       -e ncbi \
       -pa "${task.cpus}" \
-      -lib families_consensi.fasta.classified \
+      -lib families_consensi.fasta \
       -xsmall \
-      -poly \
-      -gff \
       -alignments \
       -excln \
       "${fasta}"
 
     mv "${fasta.name}.align" "${name}_repeatmasker_align.txt"
     mv "${fasta.name}.masked" "${name}_repeatmasker_masked.fasta"
-    mv "${fasta.name}.polyout" "${name}_repeatmasker_polyout.txt"
     mv "${fasta.name}.tbl" "${name}_repeatmasker_repeat_densities.txt"
     mv "${fasta.name}.out" "${name}_repeatmasker.txt"
-    mv "${fasta.name}.out.gff" "${name}_repeatmasker.gff2"
     rm -rf -- rmlib_tmp
     """
 }
 
 
-process getRepeatMaskerGFF3 {
+process getRepeatMaskerGFF {
 
     label "gffpal"
     label "small_task"
 
-    publishDir "${params.outdir}/tes/${name}"
     tag "${name} - ${analysis}"
 
     input:
     set val(name),
         val(analysis),
-        file("rm.out") from repeatMasked
+        file("rm.out") from repeatMaskerResults
             .map { n, o -> [n, "repeatmasker", o] }
-            .mix( repeatSpeciesMasked.map {n, o -> [n, "repeatmasker_species" ]} )
+            .mix( repeatMaskerSpeciesResults
+                    .map {n, o -> [n, "repeatmasker_species" ]} )
 
     output:
     set val(name),
+        val("tes"),
+        val("RepeatMasker"),
         val(analysis),
-        file("${name}_${analysis}.gff3") into repeatMaskerGFF3
+        file("rm.gff3") into repeatMaskerGFF
 
     script:
     """
-    rmout2gff3.py -o "${name}_${analysis}.gff3" rm.out
+    rmout2gff3.py -o "rm.gff3" rm.out
     """
 }
 
+
+process tidyGFFs {
+
+    label "genometools"
+    label "small_task"
+
+    publishDir "${params.outdir}/${folder}/${name}"
+
+    tag "${name} - ${analysis}"
+
+    input:
+    set val(name),
+        val(folder),
+        val(source),
+        val(analysis),
+        file("in.gff") from tRNAScanGFF
+            .mix(
+                infernalGFF,
+                rnammerGFF,
+                repeatModelerGFF,
+                mmseqsGenomeGFF,
+                eaHelitronGFF,
+                miteFinderGFF4TidyGFF,
+                repeatMaskerGFF,
+            )
+
+    output:
+    set val(name),
+        val(folder),
+        file("${name}_${analysis}.gff3") into tidiedGFFs
+
+    script:
+    """
+    grep -v "^#" in.gff \
+    | gt gff3 \
+        -tidy \
+        -sort \
+        -setsource "${source}" \
+        -retainids \
+        - \
+    > "${name}_${analysis}.gff3"
+    """
+}
+
+
 /*
-*/
+ * This just combines all results into some final GFFs
+ */
 process combineGFFs {
 
     label "genometools"
@@ -1870,32 +2048,14 @@ process combineGFFs {
     tag "${name}"
 
     input:
-    set val(name),
-        file("gffs/*") from repeatMaskerGFF3
-            .map { n, a, g -> [n, g] }
-            .mix(
-                tidiedMiteFinderGFF,
-                eaHelitronFilteredGFF,
-                ltrDigestGFF,
-                tidiedMMSeqsGFFs.map { d, n, g -> [n, g] },
-                rnammerGFF,
-                infernalMatches,
-                tRNAScanGFF,
-            )
-            .groupTuple(by: 0)
+    set val(name), val(folder), file("gffs/*.gff3") from tidiedGFFs
+            .groupTuple(by: [0, 1])
 
     output:
-    set val(name), file("${name}_pante.gff3")
+    set val(name), file("${name}_pante_${folder}.gff3")
 
     script:
     """
-    mkdir tidied
-
-    for gff in gffs/*
-    do
-      gt gff3 -tidy -sort -retainids "\${gff}" > "tidied/\$(basename \${gff})"
-    done
-
-    gt merge -tidy tidied/* > "${name}_pante.gff3"
+    gt merge -tidy gffs/*.gff3 > "${name}_pante_${folder}.gff3"
     """
 }

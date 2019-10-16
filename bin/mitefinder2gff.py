@@ -67,7 +67,7 @@ def get_region_feature(i, seqid, left, right, score):
     region_id = f"repeat_region{i}"
     attributes = GFFAttributes(
         id=region_id,
-        ontology_term=["SO:0000657"],
+        ontology_term=["SO:0000657", "SO:repeat_region"],
         custom={"mitefinder_score": score},
     )
 
@@ -91,7 +91,7 @@ def get_tir_feature(i, seqid, pos):
     region_id = f"repeat_region{i}"
     attributes = GFFAttributes(
         parent=[region_id],
-        ontology_term=["SO:0000481"]
+        ontology_term=["SO:0000481", "SO:terminal_inverted_repeat"]
     )
 
     record = GFFRecord(
@@ -117,7 +117,7 @@ def get_mite_feature(i, seqid, left, right):
 
     attributes = GFFAttributes(
         parent=[region_id],
-        ontology_term=["SO:0000338"]
+        ontology_term=["SO:0000338", "SO:MITE"]
     )
 
     record = GFFRecord(
