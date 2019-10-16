@@ -190,10 +190,8 @@ RUN  set -eu \
   && rm -rf -- RepeatModeler*
 
 # Configure repeatmasker scripts
-COPY scripts/prep_repeatmasker_lib.sh "${RMASK_PREFIX}"
 WORKDIR "${RMASK_PREFIX}"
-RUN  chmod a+x "${RMASK_PREFIX}/prep_repeatmasker_lib.sh" \
-  && cp RepeatMaskerConfig.tmpl RepeatMaskerConfig.pm \
+RUN  cp RepeatMaskerConfig.tmpl RepeatMaskerConfig.pm \
   && sed -i "s~TRF_PRGM\s*=\s*\"\"~TRF_PRGM = \"${TRF_PREFIX}/bin/trf\"~" RepeatMaskerConfig.pm \
   && sed -i 's/DEFAULT_SEARCH_ENGINE\s*=\s*"crossmatch"/DEFAULT_SEARCH_ENGINE = "ncbi"/' RepeatMaskerConfig.pm \
   && sed -i 's~HMMER_DIR\s*=\s*"/usr/local/hmmer"~HMMER_DIR = "/usr/bin"~' RepeatMaskerConfig.pm \
@@ -204,8 +202,6 @@ RUN  chmod a+x "${RMASK_PREFIX}/prep_repeatmasker_lib.sh" \
   && sed -i '/use strict;$/a use lib $ENV{"RM_LIB"};' ProcessRepeats \
   && sed -i 's~use lib "\$FindBin::RealBin/Libraries";~use lib $ENV{"RMLIB"} . "/Libraries";~' ProcessRepeats \
   && sed -i 's~\$DIRECTORY/Libraries~" . $ENV{"RM_LIB"} . "~g' ProcessRepeats \
-  && mv "${RMASK_PREFIX}/Libraries/RepeatPeps.lib" "${RMASK_PREFIX}" \
-  && rm -rf -- "${RMASK_PREFIX}/Libraries" \
   && perl -i -0pe 's/^#\!.*perl.*/#\!\/usr\/bin\/env perl/g' \
        RepeatMasker \
        DateRepeats \

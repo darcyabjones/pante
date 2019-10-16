@@ -151,24 +151,24 @@ You can also raise an issue on the github repository and I'll try to help.
 | `--repbase` | Optional | The RepBase RepeatMasker edition tarball to use to construct the repeatmasker database. Download from [https://www.girinst.org/server/RepBase/index.php](https://www.girinst.org/server/RepBase/index.php). |
 | `--rm_meta` | Optional | The RepeatMasker meta tarball to use to construct the repeatmasker database. Download from [http://www.repeatmasker.org/libraries/](http://www.repeatmasker.org/libraries/). Make sure the version matches the version of Repbase if you're using RepBase. |
 | `--dfam_hmm` | Optional | Pre downloaded Dfam HMMs to use. Will download latest if this isn't provided. |
-| `--dfam_hmm_url` | `http://dfam.org/releases/current/families/Dfam.hmm.gz` | The url to download the Dfam HMMs from if `--dfam_hmm` isn't provided. |
+| `--dfam_hmm_url` | URL to `Dfam.hmm.gz` | The url to download the Dfam HMMs from if `--dfam_hmm` isn't provided. |
 | `--dfam_embl` | Optional | Pre downloaded Dfam consensus sequences to use. Will download latest if this isn't provided. |
-| `--dfam_embl_url` | `http://dfam.org/releases/current/families/Dfam.embl.gz` | The url to download the Dfam consensus sequences from if `--dfam_embl` isn't provided. |
+| `--dfam_embl_url` | URL to `Dfam.embl.gz` | The url to download the Dfam consensus sequences from if `--dfam_embl` isn't provided. |
 | `--rm_repeatpeps` | Optional | Repeat proteins to use for repeatmasker. By default this is taken from the RepeatMasker `Library/RepeatPeps.lib` and assumes that you're using the containers. |
 | `--rm_species` | Optional | An NCBI taxonomy name to use to predict transposable elements from RepBase with. Something like `fungi` usually works fine. |
 | `--mitefinder_profiles` | Optional | A text file for MiteFinderII containing profiles to search for. Corresponds to [https://github.com/screamer/miteFinder/blob/master/profile/pattern_scoring.txt]. By default will use a file pointed to by the `MITEFINDER_PROFILE` environment variable, which is set in the provided containers. |
 | `--noinfernal` | false | Don't run Infernal `cmscan` against Rfam. This can save some time. |
 | `--rfam` | Optional | Pre-downloaded Rfam CM models (gzipped) to use. |
-| `--rfam_url` | `ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz` | The url to download Rfam CM models from if `--rfam` isn't provided. Will not download if `--noinfernal` |
+| `--rfam_url` | URL to `Rfam.cm.gz` | The url to download Rfam CM models from if `--rfam` isn't provided. Will not download if `--noinfernal` |
 | `--rfam_clanin` | Optional | Pre-downloaded Rfam clan information to use. |
-| `--rfam_clanin_url` | `ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.clanin` | The URL to download Rfam clan info from if `--rfam_clanin` isn't provided. |
+| `--rfam_clanin_url` | URL to `Rfam.clanin` | The URL to download Rfam clan info from if `--rfam_clanin` isn't provided. |
 | `--rfam_gomapping` | Optional | Pre-downloaded Rfam GO term mappings to use. |
-| `--rfam_gomapping_url` | `ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/rfam2go/rfam2go` | The URL to download Rfam GO term mappings from if `--rfam_gomapping` isn't provided. |
+| `--rfam_gomapping_url` | URL to `rfam2go` | The URL to download Rfam GO term mappings from if `--rfam_gomapping` isn't provided. |
 | `--rnammer` | false | Run RNAmmer analyses on the genomes. Assumes that you are using the containers with RNAmmer installed or have otherwise set RNAmmer. Will fail if it isn't installed. |
 | `--pfam` | Optional | A glob of Pfam stockholm formatted alignments (not gzipped) to use to search against the genomes. |
 | `--pfam_ids` | `data/pfam_ids.txt` | A file containing a list of Pfam accessions to download and use if `--pfam` isn't provided. |
 | `--gypsydb` | Optional | A glob of stockholm formatted alignments from GyDB to search against the genomes. |
-| `--gypsydb_url` | `http://gydb.org/gydbModules/collection/collection/db/GyDB_collection.zip` | The URL to download GyDB from if `--gypsydb` is not provided. |
+| `--gypsydb_url` | URL to `GyDB_collection.zip` | The URL to download GyDB from if `--gypsydb` is not provided. |
 | `--protein_families` | `data/proteins/families.stk` | A stockholm formatted file of custom aligned protein families to search against the genomes. |
 | `--infernal_max_evalue` | 0.00001 | The maximum e-value to use to consider `cmscan` matches significant. |
 | `--mmseqs_max_evalue` | 0.001 | The maximum e-value to use to consider `mmseqs` profile matches against the genomes significant. |
