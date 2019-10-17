@@ -350,7 +350,7 @@ if ( params.pfam ) {
 if ( params.gypsydb ) {
     Channel
         .fromPath( params.gypsydb, checkIfExists: true, type: "file")
-        .collect()
+        .collectFile(newLine: true)
         .set { gypsydb }
 
 } else {

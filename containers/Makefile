@@ -47,7 +47,7 @@ RECON_VERSION=1.08
 RECON_URL=http://www.repeatmasker.org/RepeatModeler/RECON-1.08.tar.gz
 RECON_PREFIX_ARG=$(INSTALL_BASE)/recon/$(RECON_VERSION)
 
-RMASK_VERSION=4-0-9
+RMASK_VERSION=4-0-9-p2
 RMASK_URL=http://www.repeatmasker.org/RepeatMasker-open-$(RMASK_VERSION).tar.gz
 RMASK_PREFIX_ARG=$(INSTALL_BASE)/repeatmasker/$(RMASK_VERSION)
 

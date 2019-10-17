@@ -147,44 +147,46 @@ You can also raise an issue on the github repository and I'll try to help.
 | parameter | default | description |
 | :---      | :---    | :---        |
 | `--genomes` | Required | A glob of the fasta genomes to search for genes in. The basename of the file is used as the genome name. |
-| `--outdir` | results | Where to store the results. |
-| `--repbase` | | |
-| `--rm_meta` | | |
-| `--dfam_hmm` | | |
-| `--dfam_hmm_url` | | |
-| `--dfam_embl` | | |
-| `--dfam_embl_url` | | |
-| `--rm_repeatpeps` | | |
-| `--rm_species` | | |
-| `--mitefinder_profiles` | | |
-| `--noinfernal` | | |
-| `--rfam` | | |
-| `--rfam_url` | | |
-| `--rfam_clanin` | | |
-| `--rfam_gomapping` | | |
-| `--rfam_gomapping_url` | | |
-| `--rnammer` | | |
-| `--pfam` | | |
-| `--gypsydb` | | |
-| `--gypsydb_url` | | |
-| `--pfam_ids` | `data/pfam_ids.txt` | |
-| `--protein_families` | `data/proteins/families.stk` | |
-| `--infernal_max_evalue` | 0.00001 | |
-| `--mmseqs_max_evalue` | 0.001 | |
-| `--min_intra_frequency` | 3 | |
-| `--min_inter_proportion` | 0.05 | |
-| `--eahelitron_three_prime_fuzzy_level` | | |
-| `--eahelitron_upstream_length` | 3000 | |
-| `--eahelitron_downstream_length` | 50 | |
-| `--ltrharvest_similar` | 85 | |
-| `--ltrharvest_vic` | 10 | |
-| `--ltrharvest_seed` | 20 | |
-| `--ltrharvest_minlenltr` | 100 | |
-| `--ltrharvest_maxlenltr` | 7000 | |
-| `--ltrharvest_mintsd` | 4 | |
-| `--ltrharvest_maxtsd` | 6 | |
-| `--mitefinder_threshold` | 0.5 | |
-| `--trans_table` | 1 | |
+| `--outdir` | `results`| The directory to store the results in. |
+| `--repbase` | Optional | The RepBase RepeatMasker edition tarball to use to construct the repeatmasker database. Download from [https://www.girinst.org/server/RepBase/index.php](https://www.girinst.org/server/RepBase/index.php). |
+| `--rm_meta` | Optional | The RepeatMasker meta tarball to use to construct the repeatmasker database. Download from [http://www.repeatmasker.org/libraries/](http://www.repeatmasker.org/libraries/). Make sure the version matches the version of Repbase if you're using RepBase. |
+| `--dfam_hmm` | Optional | Pre downloaded Dfam HMMs to use. Will download latest if this isn't provided. |
+| `--dfam_hmm_url` | URL to `Dfam.hmm.gz` | The url to download the Dfam HMMs from if `--dfam_hmm` isn't provided. |
+| `--dfam_embl` | Optional | Pre downloaded Dfam consensus sequences to use. Will download latest if this isn't provided. |
+| `--dfam_embl_url` | URL to `Dfam.embl.gz` | The url to download the Dfam consensus sequences from if `--dfam_embl` isn't provided. |
+| `--rm_repeatpeps` | Optional | Repeat proteins to use for repeatmasker. By default this is taken from the RepeatMasker `Library/RepeatPeps.lib` and assumes that you're using the containers. |
+| `--rm_species` | Optional | An NCBI taxonomy name to use to predict transposable elements from RepBase with. Something like `fungi` usually works fine. |
+| `--mitefinder_profiles` | Optional | A text file for MiteFinderII containing profiles to search for. Corresponds to [https://github.com/screamer/miteFinder/blob/master/profile/pattern_scoring.txt]. By default will use a file pointed to by the `MITEFINDER_PROFILE` environment variable, which is set in the provided containers. |
+| `--noinfernal` | false | Don't run Infernal `cmscan` against Rfam. This can save some time. |
+| `--rfam` | Optional | Pre-downloaded Rfam CM models (gzipped) to use. |
+| `--rfam_url` | URL to `Rfam.cm.gz` | The url to download Rfam CM models from if `--rfam` isn't provided. Will not download if `--noinfernal` |
+| `--rfam_clanin` | Optional | Pre-downloaded Rfam clan information to use. |
+| `--rfam_clanin_url` | URL to `Rfam.clanin` | The URL to download Rfam clan info from if `--rfam_clanin` isn't provided. |
+| `--rfam_gomapping` | Optional | Pre-downloaded Rfam GO term mappings to use. |
+| `--rfam_gomapping_url` | URL to `rfam2go` | The URL to download Rfam GO term mappings from if `--rfam_gomapping` isn't provided. |
+| `--rnammer` | false | Run RNAmmer analyses on the genomes. Assumes that you are using the containers with RNAmmer installed or have otherwise set RNAmmer. Will fail if it isn't installed. |
+| `--pfam` | Optional | A glob of Pfam stockholm formatted alignments (not gzipped) to use to search against the genomes. |
+| `--pfam_ids` | `data/pfam_ids.txt` | A file containing a list of Pfam accessions to download and use if `--pfam` isn't provided. |
+| `--gypsydb` | Optional | A glob of stockholm formatted alignments from GyDB to search against the genomes. |
+| `--gypsydb_url` | URL to `GyDB_collection.zip` | The URL to download GyDB from if `--gypsydb` is not provided. |
+| `--protein_families` | `data/proteins/families.stk` | A stockholm formatted file of custom aligned protein families to search against the genomes. |
+| `--infernal_max_evalue` | 0.00001 | The maximum e-value to use to consider `cmscan` matches significant. |
+| `--mmseqs_max_evalue` | 0.001 | The maximum e-value to use to consider `mmseqs` profile matches against the genomes significant. |
+| `--min_intra_frequency` | 3 | The minimum number of copies a clustered repeat family must have within a genome for it to be considered "present". |
+| `--min_inter_proportion` | 0.05 | The minimum proportion of genomes that the clustered repeat family must be present in (after `--min_intra_frequency`) to be considered a geniune family. |
+| `--eahelitron_three_prime_fuzzy_level` | 3 | Passed on to the EAHelitron parameter `-r`. |
+| `--eahelitron_upstream_length` | 3000 | Passed on to the EAHElitron parameter `-u`. |
+| `--eahelitron_downstream_length` | 50 | Passed on to the EAHelitron parameter `d`. |
+| `--ltrharvest_similar` | 85 | Passed on to the LTRHarvest parameter `-similar`.  |
+| `--ltrharvest_vic` | 10 | Passed on to the LTRHarvest parameter `-vic`. |
+| `--ltrharvest_seed` | 20 | Passed on to the LTRHarvest parameter `-seed`. |
+| `--ltrharvest_minlenltr` | 100 | Passed on to the LTRHarvest parameter `-minlenltr`. |
+| `--ltrharvest_maxlenltr` | 7000 | Passed on to the LTRHarvest parameter `-maxlenltr`. |
+| `--ltrharvest_mintsd` | 4 | Passed on to the LTRHarvest parameter `-mintsd`. |
+| `--ltrharvest_maxtsd` | 6 | Passed on to the LTRHarvest parameter `-maxtsd`. |
+| `--mitefinder_threshold` | 0.5 | Passed on to the MiteFinderII parameter `-threshold`. |
+| `--trans_table` | 1 | The ncbi translation table number to use for MMSeqs searches. |
+
 
 ## Exit codes
 
