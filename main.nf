@@ -906,7 +906,7 @@ process prepRepeatMaskerDB {
     # This basically concatenates the different blastable (i.e. not hmm) databases together.
     perl \
       -I "\${RMASK_PREFIX}" \
-      -e "use LibraryUtils; LibraryUtils::rebuildMainLibrary( \\"../RMLibrary\\" );"
+      -e "use LibraryUtils; LibraryUtils::rebuildMainLibrary( \\"../Libraries\\" );"
 
     buildRMLibFromEMBL.pl RepeatMaskerLib.embl > RepeatMasker.lib
 

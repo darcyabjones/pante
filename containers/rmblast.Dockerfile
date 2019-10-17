@@ -49,6 +49,7 @@ RUN  set -eu \
   && cd "c++" \
   && ./configure \
        --with-mt \
+       --with-openmp \
        --without-debug \
        --without-krb5 \
        --without-openssl \
