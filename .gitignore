@@ -10,5 +10,8 @@ containers/sources
 containers/downloads
 containers/rmlib
 containers/tmp
+test/*.genome
+test/results
+results
 .nextflow
 run

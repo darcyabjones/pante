@@ -579,7 +579,7 @@ docker/pante: pante.Dockerfile docker/base
 	@touch $@
 
 
-docker/pante-plus: docker/pante docker/hmmer2 docker/rnammer
+docker/pante-plus: pante-plus.Dockerfile docker/pante docker/hmmer2 docker/rnammer
 	docker build \
 	  --build-arg PANTE_IMAGE="$(call make_image_name,pante)" \
 	  --build-arg HMMER2_IMAGE="$(call make_image_name,hmmer2)" \

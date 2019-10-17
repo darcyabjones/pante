@@ -115,8 +115,9 @@ if ( params.repbase ) {
         .first()
         .set { repbase }
 } else {
-    log.error "Sorry for now we need repbase"
-    exit 1
+    Channel
+        .value( file("REPBASE_WAS_NULL") )
+        .set { repbase }
 }
 
 if ( params.rm_meta ) {
@@ -125,10 +126,12 @@ if ( params.rm_meta ) {
         .first()
         .set { rmMeta }
 } else {
-    log.error "Please provide the RM meta file corresponding to " +
-              "the repbase release you provided."
-    exit 1
+
+    Channel
+        .value( file("RM_META_WAS_NULL") )
+        .set { rmMeta }
 }
+
 
 if ( params.dfam_hmm ) {
 
@@ -213,7 +216,7 @@ if ( params.rm_repeatpeps ) {
 
         script:
         """
-        cp -L "\${RMASK_PREFIX}/RepeatPeps.lib" RepeatPeps.lib
+        cp -L "\${RMASK_PREFIX}/Libraries/RepeatPeps.lib" RepeatPeps.lib
         """
     }
 }
@@ -865,33 +868,40 @@ process prepRepeatMaskerDB {
     file "RepeatPeps.lib" from rmRepeatPeps
 
     output:
-    file "RMLibrary" into rmlib
+    file "Libraries" into rmlib
 
     script:
     """
-    mkdir -p RMLibrary
+    cp -r "\${RM_LIB}" Libraries
 
     # These tar archives unpack to a folder "Libraries"
-    tar zxf "repbase.tar.gz"
-    tar zxf "rm_meta.tar.gz"
+    if [ -e "repbase.tar.gz" ]
+    then
+        tar zxf "repbase.tar.gz"
+    fi
 
-    mv Libraries/* RMLibrary
-    rmdir Libraries
+    if [ -e "rm_meta.tar.gz" ]
+    then
+        tar zxf "rm_meta.tar.gz"
+    fi
 
     # Repeat peps gets distributed with the repeat masker executables.
     # Not available elsewhere.
-    cp -L RepeatPeps.lib RMLibrary
-    cp -L Dfam.hmm.gz Dfam.embl.gz RMLibrary
+    cp -L RepeatPeps.lib Libraries
+    cp -L Dfam.hmm.gz Dfam.embl.gz Libraries
 
-    cd RMLibrary
+    cd Libraries
 
     gunzip Dfam.hmm.gz
     # DFAM consensus filenames hard-coded into the script, so we move it.
     mv Dfam.embl.gz DfamConsensus.embl.gz
     gunzip DfamConsensus.embl.gz
 
-    # I think this comes with the source, or with meta.
-    gunzip taxonomy.dat.gz
+    # I think this comes with meta.
+    if [ -e "taxonomy.dat.gz" ]
+    then
+      gunzip taxonomy.dat.gz
+    fi
 
     # This basically concatenates the different blastable (i.e. not hmm) databases together.
     perl \
@@ -906,6 +916,7 @@ process prepRepeatMaskerDB {
     # As far as I can tell, nothing needs to be done with dfam hmms?
     """
 }
+
 
 /*
  * RepeatModeler
