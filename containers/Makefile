@@ -519,7 +519,7 @@ docker/pante: pante.Dockerfile docker/base
 	  --build-arg GENOMETOOLS_VERSION="$(GENOMETOOLS_VERSION)" \
 	  --build-arg GENOMETOOLS_PREFIX_ARG="$(GENOMETOOLS_PREFIX_ARG)" \
 	  --build-arg GFFPAL_IMAGE="$(call make_image_name,gffpal)" \
-	  --build-arg GFFPAL_TAG="$(GFFPAL_TAG)" \
+	  --build-arg GFFPAL_COMMIT="$(GFFPAL_COMMIT)" \
 	  --build-arg GFFPAL_PREFIX_ARG="$(GFFPAL_PREFIX_ARG)" \
 	  --build-arg HMMER3_IMAGE="$(call make_image_name,hmmer3)" \
 	  --build-arg HMMER3_VERSION="$(HMMER3_VERSION)" \

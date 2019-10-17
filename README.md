@@ -48,7 +48,7 @@ There is another category of TE pipeline that focusses on insertion site predict
 These pipelines are really only useful for organisms with existing, well-curated repeat families and for enabling specific TE-focussed sequencing experiments.
 
 
-## Quick start
+## Running PanTE
 
 Assuming you have singularity and nextflow installed (See INSTALL).
 Say you have a bunch of genome fasta files in a folder `genomes/*.fasta`.
@@ -160,7 +160,7 @@ You can view these config files in the `conf` directory.
 
 The configuration to use at runtime is controlled by the `-profile` parameter.
 
-Multiple profiles can be specified by separating them with a comma e.g. `-profile laptop,singularity`.
+Multiple profiles can be specified by separating them with a comma e.g. `-profile standard,singularity`.
 PanTE generally has a separate config file for a compute environment (e.g. cloud, HPC, laptop), and for a software environment (e.g. singularity, docker, local).
 It's likely that you'll have to tailor the compute configuration, but you shouldn't need to change the software config so this allows you to mix-and-match.
 
@@ -172,6 +172,10 @@ Available profiles for containerised software environments are:
 - `docker` - Use a pre-build docker container. Like `singularity`.
 - `docker_indiv` - Use individual docker images which must be built locally. Like `singularity_indiv`.
 - `singularity_plus` - Like `singularity_plus` but with docker.
+
+NOTE: the docker profiles assume that running `docker` does not require `sudo`.
+To use this you'll need to configure docker for "sudo-less" operation ([instructions here](https://docs.docker.com/install/linux/linux-postinstall/)).
+If you don't like this, try singularity :)
 
 
 Available compute profiles are:
@@ -204,7 +208,7 @@ You can also raise an issue on the github repository and I'll try to help.
 | `--rm_species` | Optional | An NCBI taxonomy name to use to predict transposable elements from RepBase with. Something like `fungi` usually works fine. |
 | `--mitefinder_profiles` | Optional | A text file for MiteFinderII containing profiles to search for. Corresponds to [https://github.com/screamer/miteFinder/blob/master/profile/pattern_scoring.txt]. By default will use a file pointed to by the `MITEFINDER_PROFILE` environment variable, which is set in the provided containers. |
 | `--noinfernal` | false | Don't run Infernal `cmscan` against Rfam. This can save some time. |
-| `--rfam` | Optional | Pre-downloaded Rfam CM models (gzipped) to use. |
+| `--rfam` | Optional | Pre-downloaded Rfam CM models (un-gzipped) to use. |
 | `--rfam_url` | URL to `Rfam.cm.gz` | The url to download Rfam CM models from if `--rfam` isn't provided. Will not download if `--noinfernal` |
 | `--rfam_clanin` | Optional | Pre-downloaded Rfam clan information to use. |
 | `--rfam_clanin_url` | URL to `Rfam.clanin` | The URL to download Rfam clan info from if `--rfam_clanin` isn't provided. |
@@ -232,6 +236,12 @@ You can also raise an issue on the github repository and I'll try to help.
 | `--ltrharvest_maxtsd` | 6 | Passed on to the LTRHarvest parameter `-maxtsd`. |
 | `--mitefinder_threshold` | 0.5 | Passed on to the MiteFinderII parameter `-threshold`. |
 | `--trans_table` | 1 | The ncbi translation table number to use for MMSeqs searches. |
+
+
+## Examples
+
+A test dataset and example command is provided in the `test` folder.
+On a laptop this takes about an hour to run.
 
 
 ## Exit codes
