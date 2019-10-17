@@ -116,18 +116,6 @@ DECIPHER_URL=http://www2.decipher.codes/DECIPHER_2.10.0.tar.gz
 DECIPHER_PREFIX_ARG=$(INSTALL_BASE)/decipher/$(DECIPHER_VERSION)
 
 
-# Downloads
-
-RM_LIB_ARG=/data/rmlib
-
-RMASK_META_TAR=RepeatMaskerMetaData-20181026.tar.gz
-RMASK_META_URL=http://www.repeatmasker.org/libraries/RepeatMaskerMetaData-20181026.tar.gz
-
-REPBASE_TAR=RepBaseRepeatMaskerEdition-20181026.tar.gz
-REPBASE_URL=http://www.girinst.org/server/RepBase/protected/repeatmaskerlibraries/RepBaseRepeatMaskerEdition-20181026.tar.gz
-REPBASE_USERNAME:=
-REPBASE_PASSWORD:=
-
 GENERAL=base bedtools genometools python3 gffpal
 NONCODING=infernal trnascan occultercut
 ALIGNMENT=rmblast vsearch decipher mmseqs
@@ -408,7 +396,6 @@ docker/repeatmasker: repeatmasker.Dockerfile docker/base docker/rmblast
 	  --build-arg RMOD_VERSION="$(RMOD_VERSION)" \
 	  --build-arg RMOD_URL="$(RMOD_URL)" \
 	  --build-arg RMOD_PREFIX_ARG="$(RMOD_PREFIX_ARG)" \
-	  --build-arg RM_LIB_ARG="$(RM_LIB_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
@@ -512,7 +499,7 @@ docker/occultercut: occultercut.Dockerfile docker/base
 
 # THE MONOLITH(s)
 
-docker/pante: docker/bedtools docker/decipher docker/genometools
+docker/pante: docker/bedtools docker/decipher docker/eahelitron docker/genometools
 docker/pante: docker/gffpal docker/hmmer3 docker/infernal docker/mitefinder
 docker/pante: docker/mmseqs docker/occultercut docker/python3 docker/repeatmasker
 docker/pante: docker/rmblast docker/trnascan docker/vsearch

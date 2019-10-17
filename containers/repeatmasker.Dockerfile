@@ -141,8 +141,7 @@ ARG RMASK_URL
 ARG RMASK_PREFIX_ARG
 ENV RMASK_PREFIX="${RMASK_PREFIX_ARG}"
 
-ARG RM_LIB_ARG="/data/rmlib"
-ENV RM_LIB="${RM_LIB_ARG}"
+ENV RM_LIB="${RMASK_PREFIX}/Libraries"
 
 
 ARG RMOD_VERSION
@@ -202,6 +201,7 @@ RUN  cp RepeatMaskerConfig.tmpl RepeatMaskerConfig.pm \
   && sed -i '/use strict;$/a use lib $ENV{"RM_LIB"};' ProcessRepeats \
   && sed -i 's~use lib "\$FindBin::RealBin/Libraries";~use lib $ENV{"RMLIB"} . "/Libraries";~' ProcessRepeats \
   && sed -i 's~\$DIRECTORY/Libraries~" . $ENV{"RM_LIB"} . "~g' ProcessRepeats \
+  && rm -f Libraries/Dfam.hmm Libraries/Dfam.embl \
   && perl -i -0pe 's/^#\!.*perl.*/#\!\/usr\/bin\/env perl/g' \
        RepeatMasker \
        DateRepeats \

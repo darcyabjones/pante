@@ -25,7 +25,8 @@ RUN  set -eu \
   && mkdir -p "${OCCULTERCUT_PREFIX}/bin" \
   && cp -r OcculterCut "${OCCULTERCUT_PREFIX}/bin" \
   && cd .. \
-  && rm -rf -- OcculterCut* occultercut*
+  && rm -rf -- OcculterCut* occultercut* \
+  && add_runtime_dep gnuplot libgomp1
 
 #add_runtime_dep libgomp1 python python-biopython gawk
 

@@ -827,8 +827,8 @@ process runOcculterCut {
     then
       sed -i '1i set terminal pngcairo size 900,600 enhanced font "Helvetica,20"' plot.plt
       sed -i '1a set output "plot.png"' plot.plt
-      gnuplot plot.plt
 
+      gnuplot plot.plt
       mv plot.png "${name}_occultercut.png"
     fi
 
@@ -872,7 +872,7 @@ process prepRepeatMaskerDB {
 
     script:
     """
-    cp -r "\${RM_LIB}" Libraries
+    cp -r "\${RMASK_PREFIX}/Libraries" Libraries
 
     # These tar archives unpack to a folder "Libraries"
     if [ -e "repbase.tar.gz" ]
@@ -892,15 +892,15 @@ process prepRepeatMaskerDB {
 
     cd Libraries
 
-    gunzip Dfam.hmm.gz
+    gunzip --force Dfam.hmm.gz
     # DFAM consensus filenames hard-coded into the script, so we move it.
     mv Dfam.embl.gz DfamConsensus.embl.gz
-    gunzip DfamConsensus.embl.gz
+    gunzip --force DfamConsensus.embl.gz
 
     # I think this comes with meta.
     if [ -e "taxonomy.dat.gz" ]
     then
-      gunzip taxonomy.dat.gz
+      gunzip --force taxonomy.dat.gz
     fi
 
     # This basically concatenates the different blastable (i.e. not hmm) databases together.
@@ -2039,15 +2039,18 @@ process tidyGFFs {
 
     output:
     set val(name),
+        val(folder),
         file("${name}_${analysis}.gff3") into tidiedGFFs
 
     script:
+    setsource = source == "KEEP" ? "" : "-setsource ${source}"
+
     """
     grep -v "^#" in.gff \
     | gt gff3 \
         -tidy \
         -sort \
-        -setsource "${source}" \
+        ${setsource} \
         -retainids \
         - \
     > "${name}_${analysis}.gff3"
@@ -2067,14 +2070,20 @@ process combineGFFs {
     tag "${name}"
 
     input:
-    set val(name), file("gffs/*.gff3") from tidiedGFFs.groupTuple(by: 0)
+    set val(name),
+        val(suffix),
+        file("gffs/*.gff3") from tidiedGFFs
+            .flatMap { n, f, g -> [[n, "", g], [n, "_${f}", g]] }
+            .groupTuple(by: [0, 1])
 
     output:
-    set val(name), file("${name}_pante.gff3") into combinedGFF
+    set val(name),
+        val(suffix),
+        file("${name}_pante${suffix}.gff3") into combinedGFF
 
     script:
     """
-    gt merge -tidy gffs/*.gff3 > "${name}_pante.gff3"
+    gt merge -tidy gffs/*.gff3 > "${name}_pante${suffix}.gff3"
     """
 }
 
@@ -2094,7 +2103,12 @@ process getSoftmaskedGenomes {
     set val(name),
         file("genome.fasta"),
         file("repeats.gff3") from genomes4GetSoftmaskedGenomes
-            .combine(combinedGFF, by: 0)
+            .combine(
+                combinedGFF
+                    .filter { n, s, f -> s == "" }
+                    .map { n, s, f -> [n, f] },
+                by: 0
+            )
 
     output:
     file "${name}_softmasked.fasta"

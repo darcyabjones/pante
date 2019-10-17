@@ -22,7 +22,7 @@ The pipeline follows these main steps:
 5. Compute multiple sequence alignments for the families using DECIPHER.
 6. Classify the families using RepeatClassifier (part of RepeatModeler).
 7. Search all genomes for more distant matches to the families (and optionally species models from RepBase/DFAM) using RepeatMasker.
-8. Combine all TE and ncRNA predictions into a final GFF file and soft-mask the genomes using this combined set.
+8. Combine all TE and ncRNA predictions into a final GFF files and soft-mask the genomes using this combined set.
 
 
 The reason that LTRDigest/LTRHarvest is currently excluded from the family clustering is that
@@ -52,19 +52,45 @@ These pipelines are really only useful for organisms with existing, well-curated
 
 Assuming you have singularity and nextflow installed (See INSTALL).
 Say you have a bunch of genome fasta files in a folder `genomes/*.fasta`.
-You have downloaded the [RepBase](https://www.girinst.org/repbase/) repeat masker database and the corresponsing RepeatMasker metadata file.
+
+```bash
+nextflow run darcyabjones/pante -profile singularity -resume --genomes "genomes/*.fasta"
+```
+
+Will run the full pipeline (except for RNAmmer and RepeatMasker using the "species" model).
+Additional databases like [Dfam](https://dfam.org/home), [Rfam](https://rfam.xfam.org/), [GyDB](http://www.gydb.org/index.php/Main_Page), and selected [Pfam](https://pfam.xfam.org/) models will be downloaded as part of the pipeline, but you can also download them beforehand and provide them as an argument.
+
+The results will be written to the `results` folder.
+
+
+If you provide the `--species` parameter, a separate pass of RepeatMasker will be run using the Dfam and/or RepBase databases instead of the custom libraries.
+If you would like to include this extra step I would highly recommend providing the [RepBase](https://www.girinst.org/repbase/) repeat masker database and the corresponsing [RepeatMasker metadata files](http://www.repeatmasker.org/libraries/) if you have access.
+If you do have access to RepBase, it's probably worth using it even if you aren't using the `--species` option because it might help improve family annotation.
+
+The value given to `--species` can be any NCBI taxonomy name and is provided to the RepeatMasker option `-species`.
 
 ```bash
 nextflow run darcyabjones/pante -profile singularity -resume \
   --genomes "genomes/*.fasta" \
   --repbase "downloads/RepBaseRepeatMaskerEdition-20181026.tar.gz" \
-  --rm_meta "containers/downloads/RepeatMaskerMetaData-20181026.tar.gz"
+  --rm_meta "downloads/RepeatMaskerMetaData-20181026.tar.gz" \
+  --species "fungi"
 ```
 
-Will run the full pipeline (except for RNAmmer and RepeatMasker using the "species" model).
-Additional databases will be downloaded as part of the pipeline, but you can also download them beforehand and provide them as an argument.
 
-The results will be written to the `results` folder.
+If you would like to include [RNAmmer](http://www.cbs.dtu.dk/services/RNAmmer/) rDNA predictions, you'll need to either install it on all machines that you're running the pipeline on, or you can build the extra container that does the install for you (See [containers/README.md](containers#proprietary-software)).
+
+Then you can provide the `--rnammer` flag to enable those steps.
+Here i'm assuming that you've installed RNAmmer locally.
+To use a container that you've build use the `-profile singularity_plus` parameter.
+
+```bash
+nextflow run darcyabjones/pante -profile singularity -resume \
+  --genomes "genomes/*.fasta" \
+  --species "fungi" \
+  --rnammer
+```
+
 
 ## Install
 
@@ -120,8 +146,8 @@ curl -s https://get.nextflow.io | bash
 ./nextflow run darcyabjones/pante --help
 ```
 
-Because RNAmmer has a restricted license, you'll need to [download the source files yourself](http://www.cbs.dtu.dk/cgi-bin/nph-sw_request?rnammer) and build a special container that includes it.
-There are instructions for doing this in the [containers/README.md](containers/README.md) file.
+Because RNAmmer has a restricted license, you'll need to [download the source files yourself](http://www.cbs.dtu.dk/cgi-bin/nph-sw_request?rnammer) and either install it locally or build a special container that includes it.
+There are instructions for doing this [here](containers#proprietary-software).
 
 
 ## Profiles
@@ -137,6 +163,26 @@ The configuration to use at runtime is controlled by the `-profile` parameter.
 Multiple profiles can be specified by separating them with a comma e.g. `-profile laptop,singularity`.
 PanTE generally has a separate config file for a compute environment (e.g. cloud, HPC, laptop), and for a software environment (e.g. singularity, docker, local).
 It's likely that you'll have to tailor the compute configuration, but you shouldn't need to change the software config so this allows you to mix-and-match.
+
+Available profiles for containerised software environments are:
+
+- `singularity` - Use a pre-built singularity image containing all non-proprietary software.
+- `singularity_indiv` - Uses individual singularity images for each tool build locally and stored in `containers/singularity`.
+- `singularity_plus` - Uses an extended version of the pre-built image which you must build locally and is stored as `containers/singularity/pante-plus.sif`.
+- `docker` - Use a pre-build docker container. Like `singularity`.
+- `docker_indiv` - Use individual docker images which must be built locally. Like `singularity_indiv`.
+- `singularity_plus` - Like `singularity_plus` but with docker.
+
+
+Available compute profiles are:
+
+- `standard` - (Default) Appropriate for running on a laptop with 4 CPUs and ~8GB RAM.
+- `nimbus` - Appropriate for cloud VMs or a local desktop with 16 CPUs and ~32 GB RAM each.
+- `pawsey_zeus` - Is a config for running on the [Pawsey Zeus](https://pawsey.org.au/systems/zeus/) compute cluster using SLURM.
+  Use this as more of a template for setting up your own profile as HPC configuration is pretty specific (and in this case contains some hard coded user options, sorry).
+
+
+To add your own profile, you can use the files in `./conf` as a template, and make sure you add them to `nextflow.config` under the `profiles` block.
 
 For more info on configuration see the [nextflow documentation](https://www.nextflow.io/docs/latest/config.html).
 You can also raise an issue on the github repository and I'll try to help.

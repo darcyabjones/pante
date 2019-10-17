@@ -189,8 +189,9 @@ class RMOut(object):
             ontology_terms.extend(["SO:0001005", "SO:low_complexity_region"])
 
         else:
-            type_ = "nucleotide_match"
-            ontology_terms.extend(["SO:0000347", "SO:nucleotide_match"])
+            type_ = "repeat_region"
+            ontology_terms.extend(["SO:0000657", "SO:repeat_region",
+                                   "SO:0000347", "SO:nucleotide_match"])
             custom["repeat_family"] = self.kind
 
         if self.kind == "Other/DNA_virus":
