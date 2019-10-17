@@ -169,9 +169,10 @@ Available profiles for containerised software environments are:
 - `singularity` - Use a pre-built singularity image containing all non-proprietary software available from https://cloud.sylabs.io/library/darcyabjones/default/pante.
 - `singularity_indiv` - Uses individual singularity images for each tool build locally and stored in `containers/singularity`.
 - `singularity_plus` - Uses an extended version of the pre-built image which you must build locally and is stored as `containers/singularity/pante-plus.sif`.
+  Alternatively you could use the argument `-with-singularity path/to/pante-plus.sif`.
 - `docker` - Use a pre-build docker container. Like `singularity`. Available from https://cloud.docker.com/repository/docker/darcyabjones/pante.
 - `docker_indiv` - Use individual docker images which must be built locally. Like `singularity_indiv`.
-- `singularity_plus` - Like `singularity_plus` but with docker.
+- `docker_plus` - Like `singularity_plus` but with docker.
 
 If you don't specify a software environment profile, it is assumed that all dependencies are installed locally and available on your `PATH`.
 
@@ -224,8 +225,8 @@ You can also raise an issue on the github repository and I'll try to help.
 | `--protein_families` | `data/proteins/families.stk` | A stockholm formatted file of custom aligned protein families to search against the genomes. |
 | `--infernal_max_evalue` | 0.00001 | The maximum e-value to use to consider `cmscan` matches significant. |
 | `--mmseqs_max_evalue` | 0.001 | The maximum e-value to use to consider `mmseqs` profile matches against the genomes significant. |
-| `--min_intra_frequency` | 3 | The minimum number of copies a clustered repeat family must have within a genome for it to be considered "present". |
-| `--min_inter_proportion` | 0.05 | The minimum proportion of genomes that the clustered repeat family must be present in (after `--min_intra_frequency`) to be considered a geniune family. |
+| `--min_intra_frequency` | 4 | The minimum number of copies a clustered repeat family must have within a genome for it to be considered "present". |
+| `--min_inter_proportion` | 0.2 | The minimum proportion of genomes that the clustered repeat family must be present in (after `--min_intra_frequency`) to be considered a geniune family. |
 | `--eahelitron_three_prime_fuzzy_level` | 3 | Passed on to the EAHelitron parameter `-r`. |
 | `--eahelitron_upstream_length` | 3000 | Passed on to the EAHElitron parameter `-u`. |
 | `--eahelitron_downstream_length` | 50 | Passed on to the EAHelitron parameter `d`. |

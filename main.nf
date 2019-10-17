@@ -167,12 +167,12 @@ def helpMessage() {
         matches against the genomes significant.
 
     --min_intra_frequency <int>
-        3
+        4
         The minimum number of copies a clustered repeat family
         must have within a genome for it to be considered "present".
 
     --min_inter_proportion <float>
-        0.05
+        0.2
         The minimum proportion of genomes that the clustered repeat
         family must be present in (after `--min_intra_frequency`)
         to be considered a geniune family.
@@ -279,8 +279,8 @@ params.protein_families = "$baseDir/data/proteins/families.stk"
 params.infernal_max_evalue = 0.00001
 params.mmseqs_max_evalue = 0.001
 
-params.min_intra_frequency = 3
-params.min_inter_proportion = 0.05
+params.min_intra_frequency = 4
+params.min_inter_proportion = 0.2
 
 params.eahelitron_three_prime_fuzzy_level = 3
 params.eahelitron_upstream_length = 3000
@@ -1017,17 +1017,17 @@ process runOcculterCut {
     label "occultercut"
     label "small_task"
     tag "${name}"
-    publishDir "${params.outdir}/noncoding/${name}", saveAs: exclude_unclean
+    publishDir "${params.outdir}/noncoding/${name}"
 
     input:
     set val(name), file(fasta) from genomes4RunOcculterCut
 
     output:
-    file "${name}_occultercut_regions.gff3.unclean" into occulterCutRegions
+    set val(name), file("${name}_occultercut_regions.gff3") into occulterCutRegions
+    set val(name), file("${name}_occultercut_grouped_regions.gff3") optional true into occulterCutGroupedRegions
     file "${name}_occultercut.png" optional true
     file "${name}_occultercut_composition_gc.txt"
     file "${name}_occultercut_my_genome.txt"
-    file "${name}_occultercut_grouped_regions.gff3" optional true into occulterCutGroupedRegions
     file "${name}_occultercut_nuc_frequencies.R*" optional true
 
     script:
