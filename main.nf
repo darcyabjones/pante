@@ -8,16 +8,221 @@ vim: syntax=groovy
 
 def helpMessage() {
     log.info"""
-    # pante
+    # PanTE
 
+    A pipeline for predicting and masking transposable elements in multiple genomes.
 
-    Example:
-    nextflow run -resume -profile dev,standard main.nf \
-      --genomes "A_fumigatus_A1163_chr1.fasta" \
-      --repbase "containers/rmlib" \
-      --rmspecies "fungi" \
-      --rnammer
+    ## Examples
 
+    Say you have a bunch of genomes in `genomes`, you can predict
+    ncRNAs and TEs like so:
+
+    ```bash
+    nextflow run darcyabjones/pante \
+      -profile singularity \
+      -resume \
+      --genomes "genomes/*.fasta"
+    ```
+
+    If you have access to RepBase you can include that:
+
+    ```
+    nextflow run darcyabjones/pante -profile singularity -resume \
+      --genomes "genomes/*.fasta" \
+      --repbase "downloads/RepBaseRepeatMaskerEdition-20181026.tar.gz" \
+      --rm_meta "downloads/RepeatMaskerMetaData-20181026.tar.gz" \
+      --species "fungi"
+    ```
+
+    ## Parameters
+
+    --genomes <glob>
+        Required
+        A glob of the fasta genomes to search for genes in.
+        The basename of the file is used as the genome name.
+
+    --outdir <path>
+        Default: `results`
+        The directory to store the results in.
+
+    --repbase <path>
+        Optional
+        The RepBase RepeatMasker edition tarball to use to construct
+        the repeatmasker database. Download from
+        https://www.girinst.org/server/RepBase/index.php.
+
+    --rm_meta <path>
+        Optional
+        The RepeatMasker meta tarball to use to construct the
+        repeatmasker database. Download from
+        http://www.repeatmasker.org/libraries/. Make sure the version
+        matches the version of Repbase if you're using RepBase.
+
+    --dfam_hmm <glob>
+        Optional
+        Pre downloaded Dfam HMMs to use. Will download latest
+        if this isn't provided.
+
+    --dfam_hmm_url <url>
+        http://dfam.org/releases/current/families/Dfam.hmm.gz
+        The url to download the Dfam HMMs from if `--dfam_hmm` isn't provided.
+
+    --dfam_embl <path>
+        Optional
+        Pre downloaded Dfam consensus sequences to use. Will download
+        latest if this isn't provided.
+
+    --dfam_embl_url <url>
+        http://dfam.org/releases/current/families/Dfam.embl.gz
+        The url to download the Dfam consensus sequences from
+        if `--dfam_embl` isn't provided.
+
+    --rm_repeatpeps <path>
+        Optional
+        Repeat proteins to use for repeatmasker. By default this
+        is taken from the RepeatMasker `Library/RepeatPeps.lib`
+        and assumes that you're using the containers.
+
+    --rm_species <str>
+        Optional
+        An NCBI taxonomy name to use to predict transposable
+        elements from RepBase with. Something like `fungi` usually works fine. |
+
+    --mitefinder_profiles <path>
+        Optional
+        A text file for MiteFinderII containing profiles to search for.
+        Corresponds to https://github.com/screamer/miteFinder/blob/master/profile/pattern_scoring.txt.
+        By default will use a file pointed to by the
+        `MITEFINDER_PROFILE` environment variable, which is
+        set in the provided containers.
+
+    --noinfernal
+        false
+        Don't run Infernal `cmscan` against Rfam. This can save some time.
+
+    --rfam <path>
+        Optional
+        Pre-downloaded Rfam CM models (un-gzipped) to use.
+
+    --rfam_url <url>
+        ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz
+        The url to download Rfam CM models from if `--rfam`
+        isn't provided. Will not download if `--noinfernal`.
+
+    --rfam_clanin
+        Optional
+        Pre-downloaded Rfam clan information to use.
+
+    --rfam_clanin_url <url>
+        ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.clanin
+        The URL to download Rfam clan info from if `--rfam_clanin`
+        isn't provided.
+
+    --rfam_gomapping <path>
+        Optional
+        Pre-downloaded Rfam GO term mappings to use.
+
+    --rfam_gomapping_url <url>
+        ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/rfam2go/rfam2go
+        The URL to download Rfam GO term mappings from if
+        `--rfam_gomapping` isn't provided.
+
+    --rnammer
+        false
+        Run RNAmmer analyses on the genomes. Assumes that you
+        are using the containers with RNAmmer installed or
+        have otherwise set RNAmmer. Will fail if it isn't installed.
+
+    --pfam <glob>
+        Optional
+        A glob of Pfam stockholm formatted alignments (not gzipped)
+        to use to search against the genomes.
+
+    --pfam_ids <path>
+        `data/pfam_ids.txt`
+        A file containing a list of Pfam accessions to download
+        and use if `--pfam` isn't provided.
+
+    --gypsydb <path>
+        Optional
+        A glob of stockholm formatted alignments from
+        GyDB to search against the genomes.
+
+    --gypsydb_url <url>
+        http://gydb.org/gydbModules/collection/collection/db/GyDB_collection.zip
+        The URL to download GyDB from if `--gypsydb` is not provided.
+
+    --protein_families <path>
+        `data/proteins/families.stk`
+        A stockholm formatted file of custom aligned protein families
+        to search against the genomes.
+
+    --infernal_max_evalue <float>
+        0.00001
+        The maximum e-value to use to consider `cmscan` matches significant.
+
+    --mmseqs_max_evalue
+        0.001
+        The maximum e-value to use to consider `mmseqs` profile
+        matches against the genomes significant.
+
+    --min_intra_frequency <int>
+        3
+        The minimum number of copies a clustered repeat family
+        must have within a genome for it to be considered "present".
+
+    --min_inter_proportion <float>
+        0.05
+        The minimum proportion of genomes that the clustered repeat
+        family must be present in (after `--min_intra_frequency`)
+        to be considered a geniune family.
+
+    --eahelitron_three_prime_fuzzy_level <int>
+        3
+        Passed on to the EAHelitron parameter `-r`.
+
+    --eahelitron_upstream_length <url>
+        3000
+        Passed on to the EAHElitron parameter `-u`.
+
+    --eahelitron_downstream_length <int>
+        50
+        Passed on to the EAHelitron parameter `d`.
+
+    --ltrharvest_similar <int>
+        85
+        Passed on to the LTRHarvest parameter `-similar`.
+
+    --ltrharvest_vic <int>
+        10
+        Passed on to the LTRHarvest parameter `-vic`.
+
+    --ltrharvest_seed <int>
+        20
+        Passed on to the LTRHarvest parameter `-seed`.
+
+    --ltrharvest_minlenltr <int>
+        100
+        Passed on to the LTRHarvest parameter `-minlenltr`.
+
+    --ltrharvest_maxlenltr <int>
+        7000
+        Passed on to the LTRHarvest parameter `-maxlenltr`.
+
+    --ltrharvest_mintsd <int>
+        4
+        Passed on to the LTRHarvest parameter `-mintsd`.
+
+    --ltrharvest_maxtsd <int>
+        6
+        Passed on to the LTRHarvest parameter `-maxtsd`.
+    --mitefinder_threshold <float>
+        0.5
+        Passed on to the MiteFinderII parameter `-threshold`.
+
+    --trans_table <int>
+        1
+        The ncbi translation table number to use for MMSeqs searches.
 
     ## Exit codes
 
@@ -452,6 +657,8 @@ genomes.into {
     genomes4RunStructRNAFinder;
     genomes4RunRNAmmer;
     genomes4RunOcculterCut;
+    genomes4GetOcculterCutRegionFrequencies;
+    genomes4GetOcculterCutGroupedRegionFrequencies;
     genomes4RunRepeatMaskerSpecies;
     genomes4RunRepeatMasker;
     genomes4RunRepeatModeler;
@@ -680,17 +887,21 @@ process tidyInfernalMatches {
     file "rfam2go" from rfam2GO
 
     output:
-    set val(name), val("tidied.gff3") into tidiedInfernalMatches
+    set val(name), file("tidied.gff3") into tidiedInfernalMatches
 
     script:
     """
-    tidy_infernal_gff.py \
+    awk -F '\\t' '
+      BEGIN {OFS="\\t"}
+      {\$9=gensub(":", "=", "g", \$9); print}
+      ' infernal.gff3 \
+    | tidy_infernal_gff.py \
       --go rfam2go \
       --best \
       --source "Rfam" \
       --type nucleotide_match \
       -o tidied.gff3 \
-      infernal.gff3
+      -
     """
 }
 
@@ -806,17 +1017,17 @@ process runOcculterCut {
     label "occultercut"
     label "small_task"
     tag "${name}"
-    publishDir "${params.outdir}/noncoding/${name}"
+    publishDir "${params.outdir}/noncoding/${name}", saveAs: exclude_unclean
 
     input:
     set val(name), file(fasta) from genomes4RunOcculterCut
 
     output:
-    file "${name}_occultercut_regions.gff3"
+    file "${name}_occultercut_regions.gff3.unclean" into occulterCutRegions
     file "${name}_occultercut.png" optional true
     file "${name}_occultercut_composition_gc.txt"
     file "${name}_occultercut_my_genome.txt"
-    file "${name}_occultercut_grouped_regions.gff3" optional true
+    file "${name}_occultercut_grouped_regions.gff3" optional true into occulterCutGroupedRegions
     file "${name}_occultercut_nuc_frequencies.R*" optional true
 
     script:
@@ -844,6 +1055,104 @@ process runOcculterCut {
     find . -name "nuc_frequences.R*" -printf '%f\\0' \
     | xargs -I {} -0 -- mv '{}' "${name}_occultercut_{}"
     """
+}
+
+
+/*
+ */
+process getOcculterCutRegionFrequencies {
+
+    label "gffpal"
+    label "small_task"
+
+    tag "${name}"
+
+    input:
+    set val(name), file("in.gff"), file("in.fasta") from occulterCutRegions
+        .combine(genomes4GetOcculterCutRegionFrequencies, by: 0)
+
+    output:
+    set val(name),
+        val("occultercut_frequencies"),
+        file("out.gff") into occulterCutRegionFrequencies
+
+    script:
+    """
+    tidy_occultercut_regions.py \
+      --source "OcculterCut" \
+      --type "region" \
+      -o out.gff \
+      in.gff \
+      in.fasta
+    """
+}
+
+
+/*
+ */
+process getOcculterCutGroupedRegionFrequencies {
+
+    label "gffpal"
+    label "small_task"
+
+    tag "${name}"
+
+    input:
+    set val(name),
+        file("in.gff"),
+        file("in.fasta") from occulterCutGroupedRegions
+            .combine(genomes4GetOcculterCutGroupedRegionFrequencies, by: 0)
+
+    output:
+    set val(name),
+        val("occultercut_grouped_frequencies"),
+        file("out.gff") into occulterCutGroupedRegionFrequencies
+
+    script:
+    """
+    awk '
+      BEGIN {OFS="\\t"; i=1}
+      {print \$1, \$2, "region", \$4, \$5, \$6, \$7, \$8, "Name="\$3}
+      ' in.gff \
+    | tidy_occultercut_regions.py \
+        --source "OcculterCut" \
+        --type "region" \
+        -o out.gff \
+        - \
+        in.fasta
+    """
+}
+
+
+/*
+ */
+process tidyOcculterCutGFFs {
+
+    label "genometools"
+    label "small_task"
+
+    tag "${name} - ${suffix}"
+
+    publishDir "${params.outdir}/noncoding/${name}"
+
+    input:
+    set val(name),
+        val(suffix),
+        file("in.gff") from occulterCutRegionFrequencies
+            .mix(occulterCutGroupedRegionFrequencies)
+
+    output:
+    file "${name}_${suffix}.gff3"
+
+    script:
+    """
+    gt gff3 \
+      -tidy \
+      -sort \
+      in.gff \
+    > "${name}_${suffix}.gff3"
+    """
+
 }
 
 

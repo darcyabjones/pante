@@ -100,7 +100,7 @@ If you really want to install the software yourself look in the `containers` fol
 
 To run the containers, you'll need to install either [Singularity](https://sylabs.io/docs/) (recommended) or [Docker](https://www.docker.com/).
 
-The pipeline itself will pull the containers for you.
+The pipeline itself will pull the containers for you from [Sylabs Cloud](https://cloud.sylabs.io/library/darcyabjones/default/pante) or [DockerHub](https://hub.docker.com/r/darcyabjones/pante).
 
 On an ubuntu server, the process to install nextflow and singularity might look like this.
 
@@ -166,12 +166,14 @@ It's likely that you'll have to tailor the compute configuration, but you should
 
 Available profiles for containerised software environments are:
 
-- `singularity` - Use a pre-built singularity image containing all non-proprietary software.
+- `singularity` - Use a pre-built singularity image containing all non-proprietary software available from https://cloud.sylabs.io/library/darcyabjones/default/pante.
 - `singularity_indiv` - Uses individual singularity images for each tool build locally and stored in `containers/singularity`.
 - `singularity_plus` - Uses an extended version of the pre-built image which you must build locally and is stored as `containers/singularity/pante-plus.sif`.
-- `docker` - Use a pre-build docker container. Like `singularity`.
+- `docker` - Use a pre-build docker container. Like `singularity`. Available from https://cloud.docker.com/repository/docker/darcyabjones/pante.
 - `docker_indiv` - Use individual docker images which must be built locally. Like `singularity_indiv`.
 - `singularity_plus` - Like `singularity_plus` but with docker.
+
+If you don't specify a software environment profile, it is assumed that all dependencies are installed locally and available on your `PATH`.
 
 NOTE: the docker profiles assume that running `docker` does not require `sudo`.
 To use this you'll need to configure docker for "sudo-less" operation ([instructions here](https://docs.docker.com/install/linux/linux-postinstall/)).

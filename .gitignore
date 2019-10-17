@@ -13,5 +13,6 @@ containers/tmp
 test/*.genome
 test/results
 results
+downloads
 .nextflow
 run

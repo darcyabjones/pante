@@ -6,21 +6,21 @@ The software can be build individually or as a monolithic container, depending o
 Prebuilt released/tagged versions are available at:
 
 - https://hub.docker.com/r/darcyabjones/pante
-- https://cloud.sylabs.io/library/_container/5d71f338cb093ee1142b8791
+- https://cloud.sylabs.io/library/darcyabjones/default/pante
 
 
 To pull those images:
 
 
 ```
-singularity pull library://darcyabjones/default/pante:v0.0.1
+singularity pull library://darcyabjones/default/pante:pante-v0.0.1
 
 # or
 
-sudo docker pull darcyabjones/pante:v0.0.1
+sudo docker pull darcyabjones/pante:pante-v0.0.1
 ```
 
-Replacing `v0.0.1` with whatever version you actually want.
+Replacing `pante-v0.0.1` with whatever version you actually want.
 
 
 The final image contains:
