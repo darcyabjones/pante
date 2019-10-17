@@ -1,5 +1,5 @@
 NXF_ANSI_LOG=false nextflow run ./main.nf \
-  -profile singularity,standard \
+  -profile singularity_plus,standard \
   -resume \
   --genomes "test/*.fasta" \
   --repbase containers/downloads/RepBaseRepeatMaskerEdition-20181026.tar.gz \
@@ -8,7 +8,3 @@ NXF_ANSI_LOG=false nextflow run ./main.nf \
   --noinfernal \
   --rnammer \
   --outdir "test/results"
-
-
-
-
