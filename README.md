@@ -11,17 +11,17 @@ I do make an effort to make it usable more generally though.
 PanTE takes a population of genomes and runs several repeat, transposable element, and non-coding RNA prediction tools and merges the results to yield a reasonably comprehensive picture of repeats in your genomes.
 My intended use case is for multiple genomes from the same species, but I suppose you could do closely related organisms in the same run too.
 
-To run PanTE you'll just need your genomes and ideally a copy of the RepBase repeat masker formatted database.
+To run PanTE you'll just need your genomes and optionally a copy of the [RepBase repeat masker formatted database](https://www.girinst.org/server/RepBase/index.php).
 
 The pipeline follows these main steps:
 
-1. Predict non-coding RNA elements using tRNAScan-SE, Infernal (searching against Rfam), and optionally RNAmmer.
-2. Predict transposable elements using RepeatModeler, LtrHarvest/LTRDigest, EAHelitron, MiteFinder 2, and MMSeqs2 profile searches against GyDB, selected Pfam models, and a custom set of TE proteins.
-3. Combine all TE predictions (except LTRDigest/Harvest) and cluster them to form conservative families using vsearch.
+1. Predict non-coding RNA elements using [tRNAScan-SE](http://lowelab.ucsc.edu/tRNAscan-SE/), [Infernal](http://eddylab.org/infernal/) (searching against [Rfam](https://rfam.xfam.org/)), and optionally [RNAmmer](http://www.cbs.dtu.dk/services/RNAmmer/).
+2. Predict transposable elements using [RepeatModeler](http://www.repeatmasker.org/RepeatModeler/), [LTR](http://genometools.org/tools/gt_ltrharvest.html)[Harvest](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-18)/[LTR](http://genometools.org/tools/gt_ltrdigest.html)[Digest](https://academic.oup.com/nar/article/37/21/7002/1420683), [EAHelitron](https://github.com/dontkme/EAHelitron), [MiteFinder 2](https://github.com/screamer/miteFinder), and [MMSeqs2](https://github.com/soedinglab/MMseqs2) profile searches against [GyDB](http://www.gydb.org/index.php/Main_Page), selected [Pfam](http://www.gydb.org/index.php/Main_Page) models, and a custom set of TE proteins derived from the [TransposonPSI](http://transposonpsi.sourceforge.net/) and [LTR_retriever](https://github.com/oushujun/LTR_retriever/tree/master/database) libraries.
+3. Combine all TE predictions (except LTRDigest/Harvest) and cluster them to form conservative families using [vsearch](https://github.com/torognes/vsearch).
 4. Filter the families based on minimum abundance within each genome and presence across the population.
-5. Compute multiple sequence alignments for the families using DECIPHER.
+5. Compute multiple sequence alignments for the families using [DECIPHER](http://www2.decipher.codes/).
 6. Classify the families using RepeatClassifier (part of RepeatModeler).
-7. Search all genomes for more distant matches to the families (and optionally species models from RepBase/DFAM) using RepeatMasker.
+7. Search all genomes for more distant matches to the families (and optionally species models from [RepBase](https://www.girinst.org/repbase/)/[DFAM](https://dfam.org/home)) using [RepeatMasker](http://www.repeatmasker.org/RMDownload.html).
 8. Combine all TE and ncRNA predictions into a final GFF files and soft-mask the genomes using this combined set.
 
 
@@ -37,7 +37,7 @@ There are a couple of pipelines that do repeat annotation, but I haven't seen an
 Here are some honourable mentions:
 
 - [REPET](https://urgi.versailles.inra.fr/Tools/REPET) is very comprehensive but famously buggy and difficult to install/configure.
-- [EDTA](https://github.com/oushujun/EDTA) looks fairly promising and is probably a good choice for Plant genomes.
+- [EDTA](https://github.com/oushujun/EDTA) looks fairly promising and is probably a good choice for plant genomes.
 - [PiRATE](https://bmcgenomics.biomedcentral.com/articles/10.1186/s12864-018-4763-1) is quite comprehensive.
   It is distributed as a virtual machine, and is run via [Galaxy](https://usegalaxy.org/) within that VM.
   This is probably convenient for people that only have a few genomes to run and would prefer to avoid the command line.
@@ -82,7 +82,6 @@ If you would like to include [RNAmmer](http://www.cbs.dtu.dk/services/RNAmmer/) 
 
 Then you can provide the `--rnammer` flag to enable those steps.
 Here i'm assuming that you've installed RNAmmer locally.
-To use a container that you've build use the `-profile singularity_plus` parameter.
 
 ```bash
 nextflow run darcyabjones/pante -profile singularity -resume \
