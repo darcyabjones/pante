@@ -281,7 +281,7 @@ params.gypsydb_url = "http://gydb.org/gydbModules/collection/collection/db/GyDB_
 params.pfam_ids = "$baseDir/data/pfam_ids.txt"
 params.protein_families = "$baseDir/data/proteins/families.stk"
 
-params.repeatmodeler_min_len = 10000
+params.repeatmodeler_min_len = 1000
 
 params.infernal_max_evalue = 0.00001
 params.mmseqs_max_evalue = 0.001
