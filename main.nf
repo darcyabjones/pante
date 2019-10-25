@@ -2485,10 +2485,23 @@ process getSoftmaskedGenomes {
 
     script:
     """
+    fasta_to_tsv.sh \
+    < genome.fasta \
+    | awk 'BEGIN {OFS="\t"} {print $1, 0, length($2)}' \
+    > genome.bed
+
+    bedtools intersect \
+      -a repeats.gff3 \
+      -b genome.bed \
+    > bounded.gff3
+
+
     bedtools maskfasta \
       -fi genome.fasta \
-      -bed repeats.gff3 \
+      -bed bounded.gff3 \
       -fo "${name}_softmasked.fasta" \
       -soft
+
+    rm -f bounded.gff3 genome.bed
     """
 }
