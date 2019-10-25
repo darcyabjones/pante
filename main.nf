@@ -358,7 +358,7 @@ if ( params.dfam_hmm ) {
 
         label "download"
         label "small_task"
-	time "4h"
+        time "4h"
 
         publishDir "${params.outdir}/downloads"
 
@@ -2021,7 +2021,7 @@ process getMiteFinderFastas {
  */
 process combineTEFastas {
 
-    label "posix"
+    label "python3"
     label "small_task"
     time "2h"
 
@@ -2043,10 +2043,10 @@ process combineTEFastas {
     script:
     """
     cat in/*.fasta \
-    | fasta_to_tsv.sh \
-    | sort -u -k1,1 \
-    | tsv_to_fasta.sh \
-    > combined_tes.fasta
+    | exclude_contained_subseqs.py \
+        --coverage 0.95 \
+        -o combined_tes.fasta \
+        -
     """
 }
 
@@ -2080,10 +2080,10 @@ process clusterTEFastas {
     vsearch \
       --threads "${task.cpus}" \
       --cluster_fast "combined.fasta" \
-      --id 0.8 \
-      --weak_id 0.6 \
+      --id 0.90 \
+      --weak_id 0.7 \
       --iddef 0 \
-      --qmask none \
+      --qmask dust \
       --uc clusters.tsv \
       --strand "both" \
       --clusters "clusters/fam"
