@@ -2519,7 +2519,7 @@ process getSoftmaskedGenomes {
     """
     fasta_to_tsv.sh \
     < genome.fasta \
-    | awk 'BEGIN {OFS="\t"} {print $1, 0, length($2)}' \
+    | awk 'BEGIN {OFS="\\t"} {print \$1, 0, length(\$2)}' \
     > genome.bed
 
     bedtools intersect \
