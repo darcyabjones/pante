@@ -233,12 +233,10 @@ class RMOut(object):
             ontology_terms.extend(["SO:0000206", "SO:SINE_element"])
 
         if "helitron" in self.kind.lower():
-            type_ = "helitron"
             ontology_terms.extend(["SO:0000544", "SO:helitron"])
 
         if ("maverick" in self.kind.lower()
                 or "polinton" in self.kind.lower()):
-            type_ = "polinton"
             ontology_terms.extend(["SO:0001170", "SO:polinton"])
 
         if "mite" in self.kind.lower():

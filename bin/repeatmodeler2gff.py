@@ -73,8 +73,15 @@ def parse_block(handle, source, type_):
         elif not line.startswith("#"):
             ids.append(line.split(maxsplit=1)[0])
 
+    seen = set()
+
     out = []
     for id_ in ids:
+        if id_ in seen:
+            continue
+        else:
+            seen.add(id)
+
         seqid, start, end, strand = id_to_loc(id_)
 
         if len(species) == 0:

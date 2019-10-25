@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
+import re
 import sys
 import argparse
 
 from Bio import SeqIO
-from Bio import AlignIO
-
-from Bio.Alphabet import Gapped, SingleLetterAlphabet
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
 
 def cli(prog, args):
@@ -34,21 +34,33 @@ def cli(prog, args):
     return parser.parse_args(args)
 
 
-def main():
-    args = cli(sys.argv[0], sys.argv[1:])
-    seqs = []
-    alignments = AlignIO.parse(
-        args.infile,
-        format="stockholm",
-        alphabet=Gapped(SingleLetterAlphabet(), "-")
+def line_to_seq(line, regex):
+    sline = regex.split(line.strip(), maxsplit=1)
+    seq = SeqRecord(
+        id=sline[0],
+        name=sline[0],
+        description=sline[0],
+        seq=Seq(sline[1].replace("-", "").replace(".", "")),
     )
 
-    i = 1
-    for alignment in alignments:
-        for seq in alignment:
-            seq.seq = seq.seq.ungap()
+    return seq
+
+
+def main():
+    args = cli(sys.argv[0], sys.argv[1:])
+    regex = re.compile(r"\s+")
+
+    seen = set()
+    seqs = []
+    for line in args.infile:
+        if line.startswith("#") or line.startswith("/"):
+            continue
+
+        seq = line_to_seq(line, regex)
+        if seq.id not in seen:
             seqs.append(seq)
-            i += 1
+
+        seen.add(seq.id)
 
     SeqIO.write(seqs, args.outfile, "fasta")
     return

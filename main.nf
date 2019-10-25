@@ -177,6 +177,11 @@ def helpMessage() {
         family must be present in (after `--min_intra_frequency`)
         to be considered a geniune family.
 
+    --repeatmodeler_min_len <int>
+        10000
+        The minimum scaffold length to allow for predicting repeats in repeatmodeler.
+        Scaffolds smaller than this will be removed to avoid sampling bias.
+
     --eahelitron_three_prime_fuzzy_level <int>
         3
         Passed on to the EAHelitron parameter `-r`.
@@ -275,6 +280,8 @@ params.gypsydb = false
 params.gypsydb_url = "http://gydb.org/gydbModules/collection/collection/db/GyDB_collection.zip"
 params.pfam_ids = "$baseDir/data/pfam_ids.txt"
 params.protein_families = "$baseDir/data/proteins/families.stk"
+
+params.repeatmodeler_min_len = 1000
 
 params.infernal_max_evalue = 0.00001
 params.mmseqs_max_evalue = 0.001
@@ -1173,7 +1180,6 @@ process tidyOcculterCutGFFs {
       in.gff \
     > "${name}_${suffix}.gff3"
     """
-
 }
 
 
@@ -1250,6 +1256,32 @@ process prepRepeatMaskerDB {
 
 
 /*
+ */
+process filterScaffoldLength {
+
+    label "posix"
+    label "small_task"
+    time "1h"
+
+    tag "${name}"
+
+    input:
+    set val(name), file("in.fasta") from genomes4RunRepeatModeler
+
+    output:
+    set val(name), file("filtered.fasta") into filteredGenomes4RunRepeatModeler
+
+    script:
+    """
+    fasta_to_tsv.sh < in.fasta \
+    | awk -v size="${params.repeatmodeler_min_len}" 'length(\$2) >= size' \
+    | tsv_to_fasta.sh \
+    > filtered.fasta
+    """
+}
+
+
+/*
  * RepeatModeler
  * url: http://www.repeatmasker.org/RepeatModeler/
  *
@@ -1266,7 +1298,7 @@ process runRepeatModeler {
     publishDir "${params.outdir}/tes/${name}"
 
     input:
-    set val(name), file(fasta) from genomes4RunRepeatModeler
+    set val(name), file(fasta) from filteredGenomes4RunRepeatModeler
     file "rmlib" from rmlib
 
     output:

@@ -226,6 +226,7 @@ You can also raise an issue on the github repository and I'll try to help.
 | `--mmseqs_max_evalue` | 0.001 | The maximum e-value to use to consider `mmseqs` profile matches against the genomes significant. |
 | `--min_intra_frequency` | 4 | The minimum number of copies a clustered repeat family must have within a genome for it to be considered "present". |
 | `--min_inter_proportion` | 0.2 | The minimum proportion of genomes that the clustered repeat family must be present in (after `--min_intra_frequency`) to be considered a geniune family. |
+| `--repeatmodeler_min_len` | 10000 | The minimum scaffold length to allow for predicting repeats in repeatmodeler. Scaffolds smaller than this will be removed to avoid sampling bias. |
 | `--eahelitron_three_prime_fuzzy_level` | 3 | Passed on to the EAHelitron parameter `-r`. |
 | `--eahelitron_upstream_length` | 3000 | Passed on to the EAHElitron parameter `-u`. |
 | `--eahelitron_downstream_length` | 50 | Passed on to the EAHelitron parameter `d`. |
