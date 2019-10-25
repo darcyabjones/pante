@@ -123,7 +123,7 @@ def main():
             itree[(genome, seqid)].add(interval)
 
     for (genome, seqid), subitree in itree.items():
-        SeqIO.write((keep[i.data] for i in subitree), args.outfile, format="fasta")
+        SeqIO.write((seqs[i.data] for i in subitree), args.outfile, format="fasta")
 
     return
 
