@@ -72,11 +72,11 @@ def main():
                        r":(?P<start>\d+)-(?P<end>\d+)")
 
     itree = defaultdict(IntervalTree)
-    seqs = SeqIO.parse(args.infile, format="fasta")
+    seqs = SeqIO.to_dict(SeqIO.parse(args.infile, format="fasta"))
 
-    for seq in seqs:
-        genome, seqid, start, end = parse_id_as_interval(seq.id, regex)
-        interval = Interval(start, end, data=seq)
+    for id_ in seqs.keys():
+        genome, seqid, start, end = parse_id_as_interval(id_, regex)
+        interval = Interval(start, end, data=id_)
 
         if interval in itree[(genome, seqid)]:
             continue
@@ -123,7 +123,7 @@ def main():
             itree[(genome, seqid)].add(interval)
 
     for (genome, seqid), subitree in itree.items():
-        SeqIO.write((i.data for i in subitree), args.outfile, format="fasta")
+        SeqIO.write((keep[i.data] for i in subitree), args.outfile, format="fasta")
 
     return
 
