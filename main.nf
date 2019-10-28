@@ -1294,6 +1294,9 @@ process runRepeatModeler {
     label "big_task"
     time "1d"
 
+    errorStrategy 'retry'
+    maxRetries 3
+
     tag "${name}"
     publishDir "${params.outdir}/tes/${name}"
 
