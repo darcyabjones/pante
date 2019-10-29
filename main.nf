@@ -705,7 +705,7 @@ process runTRNAScan {
     label "medium_task"
     time "5h"
 
-    publishDir "${params.outdir}/noncoding/${name}"
+    publishDir "${params.outdir}/noncoding/${name}", mode: 'copy'
 
     tag "${name}"
 
@@ -844,7 +844,7 @@ process runInfernal {
 
     tag "${name}"
 
-    publishDir "${params.outdir}/noncoding/${name}", saveAs: exclude_unclean
+    publishDir "${params.outdir}/noncoding/${name}", saveAs: exclude_unclean, mode: 'copy'
 
     when:
     run_infernal
@@ -978,7 +978,7 @@ process runRNAmmer {
     label "small_task"
     time "5h"
 
-    publishDir "${params.outdir}/noncoding/${name}", saveAs: exclude_unclean
+    publishDir "${params.outdir}/noncoding/${name}", saveAs: exclude_unclean, mode: 'copy'
 
     tag "${name}"
 
@@ -1042,7 +1042,7 @@ process runOcculterCut {
     time "4h"
     tag "${name}"
 
-    publishDir "${params.outdir}/noncoding/${name}"
+    publishDir "${params.outdir}/noncoding/${name}", mode: 'copy'
 
     input:
     set val(name), file(fasta) from genomes4RunOcculterCut
@@ -1161,7 +1161,7 @@ process tidyOcculterCutGFFs {
 
     tag "${name} - ${suffix}"
 
-    publishDir "${params.outdir}/noncoding/${name}"
+    publishDir "${params.outdir}/noncoding/${name}", mode: 'copy'
 
     input:
     set val(name),
@@ -1298,7 +1298,7 @@ process runRepeatModeler {
     maxRetries 3
 
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", mode: 'copy'
 
     input:
     set val(name), file(fasta) from filteredGenomes4RunRepeatModeler
@@ -1358,7 +1358,7 @@ process getRepeatModelerFasta {
     time "1h"
 
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", mode: 'copy'
 
     input:
     set val(name), file("in.stk") from repeatModelerStks4GetFasta
@@ -1524,7 +1524,7 @@ process searchProfilesVsGenomes {
     time "4h"
 
     tag "${name} - ${db}"
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", mode: 'copy'
 
     input:
     set val(name),
@@ -1619,7 +1619,7 @@ process getMMSeqsGenomeFastas {
 
     tag "${name} - ${db}"
 
-    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean
+    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean, mode: 'copy'
 
     input:
     set val(name),
@@ -1764,7 +1764,7 @@ process runLtrDigest {
     time "4h"
 
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean
+    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean, mode: 'copy'
 
     input:
     set val(name),
@@ -1840,7 +1840,7 @@ process runEAHelitron {
     time "6h"
 
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean
+    publishDir "${params.outdir}/tes/${name}", saveAs: exclude_unclean, mode: 'copy'
 
     input:
     set val(name), file(fasta) from genomes4RunEAHelitron
@@ -1982,7 +1982,7 @@ process getMiteFinderFastas {
     time "1h"
 
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", mode: 'copy'
 
     input:
     set val(name),
@@ -2069,7 +2069,7 @@ process clusterTEFastas {
     label "medium_task"
     time "1d"
 
-    publishDir "${params.outdir}/pantes"
+    publishDir "${params.outdir}/pantes", mode: 'copy'
 
     input:
     file "combined.fasta" from combinedTEFasta
@@ -2103,7 +2103,7 @@ process filterTEClusters {
     label "small_task"
     time "4h"
 
-    publishDir "${params.outdir}/pantes"
+    publishDir "${params.outdir}/pantes", mode: 'copy'
 
     input:
     set file("clusters.tsv"), file("clusters") from clusteredTEFasta
@@ -2144,7 +2144,7 @@ process getClusterMSAs {
     label "big_task"
     time "1d"
 
-    publishDir "${params.outdir}/pantes"
+    publishDir "${params.outdir}/pantes", mode: 'copy'
 
     input:
     file "clusters" from filteredTEClusters
@@ -2185,7 +2185,7 @@ process getClusterMSAConsensus {
     label "medium_task"
     time "6h"
 
-    publishDir "${params.outdir}/pantes"
+    publishDir "${params.outdir}/pantes", mode: 'copy'
 
     input:
     file "msas" from clusterMSA4GetClusterMSAConsensus
@@ -2219,7 +2219,7 @@ process getClusterMSAStockholm {
     label "small_task"
     time "2h"
 
-    publishDir "${params.outdir}/pantes"
+    publishDir "${params.outdir}/pantes", mode: 'copy'
 
     input:
     file "msas" from clusterMSA4GetClusterMSAStockholm
@@ -2248,7 +2248,7 @@ process runRepeatClassifier {
     label "big_task"
     time "12h"
 
-    publishDir "${params.outdir}/pantes"
+    publishDir "${params.outdir}/pantes", mode: 'copy'
 
     input:
     file "families_consensi.fasta" from clusterMSAConsensus
@@ -2291,7 +2291,7 @@ process runRepeatMaskerSpecies {
     time "1d"
 
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", mode: 'copy'
 
     when:
     params.rm_species
@@ -2344,7 +2344,7 @@ process runRepeatMasker {
     time "1d"
 
     tag "${name}"
-    publishDir "${params.outdir}/tes/${name}"
+    publishDir "${params.outdir}/tes/${name}", mode: 'copy'
 
     input:
     set val(name), file(fasta) from genomes4RunRepeatMasker
@@ -2419,7 +2419,7 @@ process tidyGFFs {
     label "small_task"
     time "1h"
 
-    publishDir "${params.outdir}/${folder}/${name}"
+    publishDir "${params.outdir}/${folder}/${name}", mode: 'copy'
 
     tag "${name} - ${analysis}"
 
@@ -2470,7 +2470,7 @@ process combineGFFs {
     label "small_task"
     time "2h"
 
-    publishDir "${params.outdir}/final"
+    publishDir "${params.outdir}/final", mode: 'copy'
     tag "${name}"
 
     input:
@@ -2501,7 +2501,7 @@ process getSoftmaskedGenomes {
     label "small_task"
     time "1h"
 
-    publishDir "${params.outdir}/final"
+    publishDir "${params.outdir}/final", mode: 'copy'
     tag "${name}"
 
     input:
