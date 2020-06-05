@@ -90,7 +90,7 @@ HMMER2_PREFIX_ARG=$(INSTALL_BASE)/hmmer2/$(HMMER2_VERSION)
 
 RNAMMER_VERSION=1.2
 RNAMMER_PREFIX_ARG=$(INSTALL_BASE)/rnammer/$(RNAMMER_VERSION)
-RNAMMER_TAR=sources/rnammer-1.2.src.tar.Z
+RNAMMER_TAR=sources/rnammer-1.2.src.tar.gz
 
 OCCULTERCUT_VERSION=1.1
 OCCULTERCUT_URL=https://downloads.sourceforge.net/project/occultercut/OcculterCut_v1.1.tar.gz
@@ -111,8 +111,8 @@ VSEARCH_VERSION=2.14.1
 VSEARCH_URL=https://github.com/torognes/vsearch/archive/v2.14.1.tar.gz
 VSEARCH_PREFIX_ARG=$(INSTALL_BASE)/vsearch/$(VSEARCH_VERSION)
 
-DECIPHER_VERSION=2.10.0
-DECIPHER_URL=http://www2.decipher.codes/DECIPHER_2.10.0.tar.gz
+DECIPHER_VERSION=2.16.1
+DECIPHER_URL=http://www2.decipher.codes/DECIPHER_2.16.1.tar.gz
 DECIPHER_PREFIX_ARG=$(INSTALL_BASE)/decipher/$(DECIPHER_VERSION)
 
 
