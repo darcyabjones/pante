@@ -358,7 +358,7 @@ if ( params.dfam_hmm ) {
 
         label "download"
         label "small_task"
-        time "4h"
+        time "12h"
 
         publishDir "${params.outdir}/downloads"
 
@@ -390,7 +390,7 @@ if ( params.dfam_embl ) {
 
         label "download"
         label "small_task"
-        time "1h"
+        time "12h"
 
         publishDir "${params.outdir}/downloads"
 
