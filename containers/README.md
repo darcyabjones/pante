@@ -124,7 +124,7 @@ decides if it needs to rebuild anything.
 
 #### Step 1
 
-Download the source tar file `rnammer-1.2.src.tar.Z` into the `containers/sources` subfolder.
+Download the source tar file `rnammer-1.2.src.tar.gz` into the `containers/sources` subfolder.
 Alternatively, you can provide the `RNAMMER_TAR` variable when you call `make`.
 
 Build the docker container for RNAmmer.
