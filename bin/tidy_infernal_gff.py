@@ -61,6 +61,10 @@ def cli(prog, args):
 def parse_rfam2go(handle):
     out = defaultdict(list)
     for line in handle:
+        line = line.strip()
+        if line.startswith("!"):
+            continue
+        
         rfam, go = line.strip().split(">", maxsplit=1)
         rfam_acc, rfam_name = rfam.strip().split()
         go_acc, go_name = go.strip().split(";", maxsplit=1)
