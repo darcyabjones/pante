@@ -167,22 +167,29 @@ class RMOut(object):
             custom["has_better_overlapping_hit"] = "true"
 
         if self.kind == "Simple_repeat":
-            repeat_unit = re.match(
-                r"\((?P<rep>.+)\)n",
-                self.family
-            ).group("rep")
-
-            custom["repeat_unit"] = repeat_unit
-
-            if len(repeat_unit) == 1:
-                type_ = "monomeric_repeat"
-                ontology_terms.extend(["SO:0001934", "SO:monomeric_repeat"])
-            elif len(repeat_unit) < 10:
-                type_ = "microsatellite"
-                ontology_terms.extend(["SO:0000289", "SO:microsatellite"])
+            
+            if self.family.startswith("fam"):
+                type_ = "repeat_region"
+                ontology_terms.extend(["SO:0000657", "SO:repeat_region",
+                                   "SO:0000347", "SO:nucleotide_match"])
+                custom["repeat_family"] = self.kind
             else:
-                type_ = "minisatellite"
-                ontology_terms.extend(["SO:0000643", "SO:minisatellite"])
+                repeat_unit = re.match(
+                    r"\((?P<rep>.+)\)n",
+                    self.family
+                ).group("rep")
+
+                custom["repeat_unit"] = repeat_unit
+
+                if len(repeat_unit) == 1:
+                    type_ = "monomeric_repeat"
+                    ontology_terms.extend(["SO:0001934", "SO:monomeric_repeat"])
+                elif len(repeat_unit) < 10:
+                    type_ = "microsatellite"
+                    ontology_terms.extend(["SO:0000289", "SO:microsatellite"])
+                else:
+                    type_ = "minisatellite"
+                    ontology_terms.extend(["SO:0000643", "SO:minisatellite"])
 
         elif self.kind == "Low_complexity":
             type_ = "low_complexity_region"
