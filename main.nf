@@ -2028,7 +2028,7 @@ process combineTEFastas {
     label "small_task"
     time "2h"
 
-    publishDir "${params.outdir}/${name}/pantes"
+    publishDir "${params.outdir}/pantes"
 
     input:
     file "in/*.fasta" from repeatModelerFasta
@@ -2069,7 +2069,7 @@ process clusterTEFastas {
     label "medium_task"
     time "1d"
 
-    publishDir "${params.outdir}/${name}/pantes"
+    publishDir "${params.outdir}/pantes"
 
     input:
     file "combined.fasta" from combinedTEFasta
@@ -2103,7 +2103,7 @@ process filterTEClusters {
     label "small_task"
     time "4h"
 
-    publishDir "${params.outdir}/${name}/pantes"
+    publishDir "${params.outdir}/pantes"
 
     input:
     set file("clusters.tsv"), file("clusters") from clusteredTEFasta
@@ -2144,7 +2144,7 @@ process getClusterMSAs {
     label "big_task"
     time "1d"
 
-    publishDir "${params.outdir}/${name}/pantes"
+    publishDir "${params.outdir}/pantes"
 
     input:
     file "clusters" from filteredTEClusters
@@ -2185,7 +2185,7 @@ process getClusterMSAConsensus {
     label "medium_task"
     time "6h"
 
-    publishDir "${params.outdir}/${name}/pantes"
+    publishDir "${params.outdir}/pantes"
 
     input:
     file "msas" from clusterMSA4GetClusterMSAConsensus
@@ -2219,7 +2219,7 @@ process getClusterMSAStockholm {
     label "small_task"
     time "2h"
 
-    publishDir "${params.outdir}/${name}/pantes"
+    publishDir "${params.outdir}/pantes"
 
     input:
     file "msas" from clusterMSA4GetClusterMSAStockholm
@@ -2248,7 +2248,7 @@ process runRepeatClassifier {
     label "big_task"
     time "12h"
 
-    publishDir "${params.outdir}/${name}/pantes"
+    publishDir "${params.outdir}/pantes"
 
     input:
     file "families_consensi.fasta" from clusterMSAConsensus
