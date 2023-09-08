@@ -71,7 +71,10 @@ def parse_block(handle, source, type_):
             )
 
         elif not line.startswith("#"):
-            ids.append(line.split(maxsplit=1)[0])
+            if len(line) ==1:
+                continue
+            else:
+                ids.append(line.split(maxsplit=1)[0])
 
     seen = set()
 
