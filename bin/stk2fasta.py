@@ -53,7 +53,7 @@ def main():
     seen = set()
     seqs = []
     for line in args.infile:
-        if line.startswith("#") or line.startswith("/"):
+        if line.startswith("#") or line.startswith("/") or len(line) == 1:
             continue
 
         seq = line_to_seq(line, regex)
