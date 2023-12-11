@@ -277,7 +277,7 @@ params.rnammer = false
 
 params.pfam = false
 params.gypsydb = false
-params.gypsydb_url = "http://gydb.org/gydbModules/collection/collection/db/GyDB_collection.zip"
+params.gypsydb_url = "https://gydb.org/extensions/Collection/collection/db/GyDB_collection.zip"
 params.pfam_ids = "$baseDir/data/pfam_ids.txt"
 params.protein_families = "$baseDir/data/proteins/families.stk"
 
@@ -598,7 +598,7 @@ if ( params.gypsydb ) {
         script:
         """
         mkdir gypsydb
-        wget -O gypsy.zip "${params.gypsydb_url}"
+        wget --no-check-certificat -O gypsy.zip "${params.gypsydb_url}"
         unzip gypsy.zip
         mv GyDB*/alignments/*.sto ./gypsydb
         rm -rf -- GyDB*
