@@ -267,11 +267,11 @@ params.mitefinder_profiles = false
 // a lot of what we want it for. So option is offered to disable it.
 params.noinfernal = false
 params.rfam = false
-params.rfam_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz"
+params.rfam_url = "https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.cm.gz"
 params.rfam_clanin = false
-params.rfam_clanin_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.clanin"
+params.rfam_clanin_url = "https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/Rfam.clanin"
 params.rfam_gomapping = false
-params.rfam_gomapping_url = "ftp://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/rfam2go/rfam2go"
+params.rfam_gomapping_url = "https://ftp.ebi.ac.uk/pub/databases/Rfam/CURRENT/rfam2go"
 params.rnammer = false
 
 
