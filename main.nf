@@ -369,6 +369,7 @@ if ( params.dfam_hmm ) {
         """
         wget \
           --no-check-certificate \
+	  --tries=1 \
           -c \
           -O dfam.hmm.gz \
           "${params.dfam_hmm_url}"
