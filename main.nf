@@ -1196,7 +1196,7 @@ process prepRepeatMaskerDB {
 
     label "repeatmasker"
     label "small_task"
-    time "3h"
+    time "6h"
 
     input:
     file "repbase.tar.gz" from repbase
@@ -1245,7 +1245,8 @@ process prepRepeatMaskerDB {
     perl \
       -I "\${RMASK_PREFIX}" \
       -e "use LibraryUtils; LibraryUtils::rebuildMainLibrary( \\"../Libraries\\" );"
-
+    
+    sed -i '/^\$/d' RepeatMaskerLib.embl
     buildRMLibFromEMBL.pl RepeatMaskerLib.embl > RepeatMasker.lib
 
     makeblastdb -dbtype nucl -in RepeatMasker.lib
