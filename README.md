@@ -1,3 +1,26 @@
+# PanTE2
+
+An updated version of PanTE. Please run the following command using singularity (nexflow version has to be <=22.10.7)
+```
+NXF_ANSI_LOG=false nextflow run KristinaGagalova/pante2 -r master \
+  -profile singularity,standard \
+  -resume \
+  --genomes "test/*.fasta" \
+  --outdir "test/results"
+```
+
+Otherwise clone the repo locally and run the command **inside the ```pante2``` directory**
+```
+cd pante2
+NXF_ANSI_LOG=false nextflow run ./main.nf \
+  -profile singularity,standard \
+  -resume \
+  --genomes "test/*.fasta" \
+  --outdir "test/results"
+```
+
+***
+
 # PanTE
 
 A pipeline for predicting and masking transposable elements in multiple genomes.
