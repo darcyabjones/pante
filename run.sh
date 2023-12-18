@@ -1,5 +1,5 @@
 
-NXF_ANSI_LOG=false /home/ubuntu/src/nextflow-22.10.7/build/releases/nextflow-22.10.7-all run ./main.nf \
+NXF_ANSI_LOG=false /home/ubuntu/src/nextflow-22.10.7/build/releases/nextflow-22.10.7-all run KristinaGagalova\pante2 -r master \
   -profile singularity,standard \
   -resume \
   --genomes "test/*.fasta" \
