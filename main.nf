@@ -1195,7 +1195,7 @@ process tidyOcculterCutGFFs {
 process prepRepeatMaskerDB {
 
     label "repeatmasker"
-    label "small_task"
+    label "medium_task"
     time "6h"
 
     input:
