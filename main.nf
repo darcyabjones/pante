@@ -1430,7 +1430,7 @@ process getMMSeqsGenomes {
     """
     mkdir genome orfs translated_orfs tmp
 
-    mmseqs createdb "${fasta}" genome/db --dont-split-seq-by-len
+    mmseqs createdb "${fasta}" genome/db #--dont-split-seq-by-len
 
     # This command seems to be the secret sauce to getting profile-vs-genome
     # searches to work.

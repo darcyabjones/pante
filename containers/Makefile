@@ -15,6 +15,14 @@ OCCULTERCUT_VERSION=1.1
 OCCULTERCUT_URL=https://downloads.sourceforge.net/project/occultercut/OcculterCut_v1.1.tar.gz
 OCCULTERCUT_PREFIX_ARG=$(INSTALL_BASE)/occultercut/$(OCCULTERCUT_VERSION)
 
+MITEFINDER_COMMIT=833754b
+MITEFINDER_REPO=https://github.com/screamer/miteFinder.git
+MITEFINDER_PREFIX_ARG=$(INSTALL_BASE)/mitefinder/$(MITEFINDER_COMMIT)
+
+EAHELITRON_COMMIT=769ae07
+EAHELITRON_REPO=https://github.com/dontkme/EAHelitron.git
+EAHELITRON_PREFIX_ARG=$(INSTALL_BASE)/eahelitron/$(EAHELITRON_COMMIT)
+
 # Targets
 # -----------------------------------------------------------
 all: docker/all singularity/all
@@ -82,6 +90,12 @@ docker/pante: pante_env.Dockerfile env_yml/pante_env.yml
 	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
 	  --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
 	  --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
+	  --build-arg MITEFINDER_COMMIT="$(MITEFINDER_COMMIT)" \
+	  --build-arg MITEFINDER_REPO="$(MITEFINDER_REPO)" \
+	  --build-arg MITEFINDER_PREFIX_ARG="$(MITEFINDER_PREFIX_ARG)" \
+	  --build-arg EAHELITRON_COMMIT="$(EAHELITRON_COMMIT)" \
+	  --build-arg EAHELITRON_REPO="$(EAHELITRON_REPO)" \
+	  --build-arg EAHELITRON_PREFIX_ARG="$(EAHELITRON_PREFIX_ARG)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .
