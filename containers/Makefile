@@ -1,5 +1,5 @@
 PWD=$(shell pwd)
-TAG=pante2-v1.0.0
+TAG=v1.0.0
 DOCKER_USER=kristinagagalova
 BASE_IMAGE=$(DOCKER_USER)/base:$(TAG)
 
@@ -85,7 +85,7 @@ dockerpull/%:
 
 # THE MONOLITH(s)
 
-docker/pante: pante_env.Dockerfile env_yml/pante_env.yml
+docker/pante2: pante_env.Dockerfile env_yml/pante_env.yml
 	docker build \
 	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
 	  --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \

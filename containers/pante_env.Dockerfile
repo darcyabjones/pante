@@ -19,6 +19,10 @@ RUN micromamba install -y -n pante -f /tmp/pante_env.yml && \
     micromamba clean --all --yes
 
 ENV PATH="/opt/conda/envs/pante/bin:${PATH}"
+# change path to temp dir in tRNAscan
+RUN find /opt/conda/envs/pante/ -name "tRNAscan-SE.conf" -exec sed -i 's#temp_dir: /tmp#temp_dir: ./temp_dir#' \; 
+
+
 
 ENV PATH="/opt/conda/envs/pante/lib/python3.10/bin:${PATH}"
 ENV PYTHONPATH="/opt/conda/envs/pante/lib/python3.10/site-packages/:${PYTHONPATH}"
