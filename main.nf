@@ -1326,7 +1326,7 @@ process runRepeatModeler {
     BuildDatabase -name "${name}" -engine ncbi "${fasta}"
 
     # Can we split this over scaffolds?
-    RepeatModeler -engine ncbi -pa "${ncpu}" -database "${name}" >& run.out
+    RepeatModeler -engine ncbi -threads "${ncpu}" -database "${name}" >& run.out
 
     if [ -e "${name}-families.fa" ]
     then
