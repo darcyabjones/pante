@@ -11,6 +11,7 @@ ENV OCCULTERCUT_PREFIX="${OCCULTERCUT_PREFIX_ARG}"
 COPY base.sh /build/base.sh
 USER 0
 
+# install most of dep
 COPY --chown=$MAMBA_USER:$MAMBA_USER env_yml/pante_env.yml /tmp/pante_env.yml
 
 RUN micromamba create -n pante
@@ -18,11 +19,15 @@ RUN micromamba create -n pante
 RUN micromamba install -y -n pante -f /tmp/pante_env.yml && \
     micromamba clean --all --yes
 
-ENV PATH="/opt/conda/envs/pante/bin:${PATH}"
-# change path to temp dir in tRNAscan
-RUN find /opt/conda/envs/pante/ -name "tRNAscan-SE.conf" -exec sed -i 's#temp_dir: /tmp#temp_dir: ./temp_dir#' \; 
+# install new repeatmodeler
+COPY --chown=$MAMBA_USER:$MAMBA_USER env_yml/repeatmodeler_env.yml /tmp/repeatmodeler_env.yml
 
+RUN micromamba create -n repeatmodeler
 
+RUN micromamba install -y -n repeatmodeler -f /tmp/repeatmodeler_env.yml && \
+    micromamba clean --all --yes
+
+ENV PATH="/opt/conda/envs/pante/bin:/opt/conda/envs/repeatmodeler/bin:${PATH}"
 
 ENV PATH="/opt/conda/envs/pante/lib/python3.10/bin:${PATH}"
 ENV PYTHONPATH="/opt/conda/envs/pante/lib/python3.10/site-packages/:${PYTHONPATH}"

@@ -64,9 +64,8 @@ tidy:
 singularity/%.sif: docker/%
 	@mkdir -p "$(dir $@)"
 	@mkdir -p tmp tmp/cache
-	SINGULARITY_TMPDIR="${PWD}/tmp" SINGULARITY_CACHEDIR="${PWD}/tmp/cache" singularity build \
+	singularity build \
 	  --force \
-	  --tmpdir "${PWD}/tmp" \
 	  "$@" \
 	  "docker-daemon://$(call make_image_name,$(notdir $(basename $@)))"
 

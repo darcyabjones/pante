@@ -19,6 +19,10 @@ dependencies:
     - defaults::git
     - conda-forge::gnuplot=5.4.8
     - conda-forge::perl=5.32.1
+    - conda-forge::perl-file-which
+    - bioconda::perl-devel-size
+    - bioconda::perl-uri
+    - bioconda::perl-libwww-perl
     - pip:
          - biopython==1.81
          - intervaltree==3.1.0
