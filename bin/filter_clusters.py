@@ -8,7 +8,6 @@ import re
 from collections import defaultdict
 
 from Bio import SeqIO
-from Bio.Alphabet import NucleotideAlphabet
 
 from intervaltree import Interval, IntervalTree
 
@@ -307,8 +306,7 @@ def main():
 
         seqs = SeqIO.to_dict(SeqIO.parse(
             infile,
-            format="fasta",
-            alphabet=NucleotideAlphabet()
+            format="fasta"
         ))
 
         cluster_nums = set()
