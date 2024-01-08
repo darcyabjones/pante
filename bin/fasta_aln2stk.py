@@ -6,9 +6,6 @@ import os
 
 from Bio import AlignIO
 
-from Bio.Alphabet import Gapped, SingleLetterAlphabet
-
-
 def cli(prog, args):
     parser = argparse.ArgumentParser(
         prog=prog,
@@ -38,20 +35,16 @@ def main():
     args = cli(sys.argv[0], sys.argv[1:])
 
     for infile in args.infiles:
-        alignments = AlignIO.read(
-            infile,
-            format="fasta",
-            alphabet=Gapped(SingleLetterAlphabet(), "-")
-        )
+        alignments = AlignIO.read(infile, format="fasta")
 
         id_ = os.path.split(os.path.splitext(infile.name)[0])[-1]
 
-        fmt = alignments.format("stockholm").split("\n", maxsplit=1)
-        args.outfile.write(fmt[0])
-        args.outfile.write(f"\n#=GF ID {id_}\n")
-        args.outfile.write(fmt[1])
+        args.outfile.write("#=GF ID {}\n".format(id_))
+        AlignIO.write(alignments, args.outfile, "stockholm")
+
     return
 
 
 if __name__ == "__main__":
     main()
+
