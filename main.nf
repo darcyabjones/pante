@@ -2267,7 +2267,6 @@ process runRepeatClassifier {
     export RM_LIB="\${PWD}/rmlib_tmp"
 
     RepeatClassifier \
-      -engine ncbi \
       -consensi families_consensi.fasta \
       -stockholm families.stk
 
