@@ -2,7 +2,7 @@
 
 An updated version of PanTE. Please run the following command using singularity (nexflow version has to be <=22.10.7)
 ```
-NXF_ANSI_LOG=false nextflow run KristinaGagalova/pante2 -r master \
+NXF_ANSI_LOG=false nextflow run KristinaGagalova/pante2 -r version-update \
   -profile singularity,standard \
   -resume \
   --genomes "test/*.fasta" \
