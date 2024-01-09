@@ -1,0 +1,9 @@
+name: pante2
+channels:
+    - conda-forge
+    - defaults
+    - bioconda
+dependencies:
+    - bioconda::bedtools=2.31.1
+    - pip:
+         - biopython==1.81

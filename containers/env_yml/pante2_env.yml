@@ -1,4 +1,4 @@
-name: pante
+name: pante2
 channels:
     - conda-forge
     - defaults

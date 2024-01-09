@@ -9,6 +9,7 @@ define make_image_name
 $(DOCKER_USER)/$(notdir $1):$(TAG)
 endef
 
+
 # Other tools
 # -----------------------------------------------------------
 OCCULTERCUT_VERSION=1.1
@@ -23,26 +24,21 @@ EAHELITRON_COMMIT=769ae07
 EAHELITRON_REPO=https://github.com/dontkme/EAHelitron.git
 EAHELITRON_PREFIX_ARG=$(INSTALL_BASE)/eahelitron/$(EAHELITRON_COMMIT)
 
+# rnammer + hmm2
+RNAMMER_VERSION=1.2
+RNAMMER_PREFIX=$(INSTALL_BASE)/rnammer/$(RNAMMER_VERSION)
+
+HMMER2_VERSION=2.3.2
+HMMER2_URL=http://eddylab.org/software/hmmer/hmmer-2.3.2.tar.gz
+HMMER2_PREFIX=$(INSTALL_BASE)/hmmer2/$(HMMER2_VERSION)
+
 # Targets
 # -----------------------------------------------------------
-all: docker/all singularity/all
-
-docker: docker/pante
-docker/all: docker/general docker/alignment docker/annotation docker/noncoding
-	@echo "WARNING: proprietary software will not be built by default."
-	@echo "WARNING: call 'make docker/proprietary' explicitly to create them."
-
-# Proprietary software won't be built by default.
-docker/proprietary: $(addprefix docker/,$(PROPRIETARY))
+docker: docker/pante2
 
 # Singularity targets
-singularity: singularity/pante.sif
-singularity/all: singularity/general singularity/alignment singularity/annotation singularity/noncoding
-	@echo "WARNING: proprietary software will not be built by default."
-	@echo "WARNING: call 'make singularity/proprietary' explicitly to create them."
-
-# Proprietary software won't be built by default.
-singularity/proprietary: $(addprefix singularity/,$(addsuffix .sif,$(PROPRIETARY)))
+singularity: singularity/pante2.sif
+singularity: singularity/pante2-rnammer.sif
 
 # Pull containers for dockerhub
 dockerpull: dockerpull/pante
@@ -80,11 +76,8 @@ dockerpull/%:
 
 
 # Basic tools
-
-
 # THE MONOLITH(s)
-
-docker/pante2: pante_env.Dockerfile env_yml/pante_env.yml
+docker/pante2: pante2_env.Dockerfile env_yml/pante2_env.yml
 	docker build \
 	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
 	  --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
@@ -102,17 +95,29 @@ docker/pante2: pante_env.Dockerfile env_yml/pante_env.yml
 	@touch $@
 
 
-docker/pante-plus: pante-plus.Dockerfile docker/pante docker/hmmer2 docker/rnammer
-	docker build \
-	  --build-arg PANTE_IMAGE="$(call make_image_name,pante)" \
-	  --build-arg HMMER2_IMAGE="$(call make_image_name,hmmer2)" \
-	  --build-arg HMMER2_VERSION="$(HMMER2_VERSION)" \
-	  --build-arg HMMER2_PREFIX_ARG="$(HMMER2_PREFIX_ARG)" \
-	  --build-arg RNAMMER_IMAGE="$(call make_image_name,rnammer)" \
-	  --build-arg RNAMMER_VERSION="$(RNAMMER_VERSION)" \
-	  --build-arg RNAMMER_PREFIX_ARG="$(RNAMMER_PREFIX_ARG)" \
-	  --file $< \
-	  -t "$(call make_image_name,$@)" \
-	  .
-	@mkdir -p "$(dir $@)"
-	@touch $@
+docker/pante2-rnammer: pante2-rnammer_env.Dockerfile env_yml/pante2-rnammer_env.yml
+	if [ -z $(RNAMMER_TAR) ]; then \
+		echo "error RNAMMER_TAR is not set for pante2-rnammer. Please provide a value for RNAMMER_TAR. ex "sudo make docker/pante2-rnammer RNAMMER_TAR=/path/to/rnammertar")"; \
+	else \
+		docker build \
+                    --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
+                    --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
+                    --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
+                    --build-arg MITEFINDER_COMMIT="$(MITEFINDER_COMMIT)" \
+                    --build-arg MITEFINDER_REPO="$(MITEFINDER_REPO)" \
+                    --build-arg MITEFINDER_PREFIX_ARG="$(MITEFINDER_PREFIX_ARG)" \
+                    --build-arg EAHELITRON_COMMIT="$(EAHELITRON_COMMIT)" \
+                    --build-arg EAHELITRON_REPO="$(EAHELITRON_REPO)" \
+                    --build-arg EAHELITRON_PREFIX_ARG="$(EAHELITRON_PREFIX_ARG)" \
+                    --build-arg RNAMMER_TAR="$(RNAMMER_TAR)"\
+                    --build-arg RNAMMER_VERSION="$(RNAMMER_VERSION)" \
+                    --build-arg RNAMMER_PREFIX="$(RNAMMER_PREFIX)" \
+		    --build-arg HMMER2_VERSION="$(HMMER2_VERSION)" \
+		    --build-arg HMMER2_URL="$(HMMER2_URL)" \
+		    --build-arg HMMER2_PREFIX=$(INSTALL_BASE)/hmmer2/$(HMMER2_VERSION) \
+                    --file $< \
+                    -t "$(call make_image_name,$@)" \
+                    . ; \
+		mkdir -p "$(dir $@)" ; \
+		touch $@; \
+	fi

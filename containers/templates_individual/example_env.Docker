@@ -1,0 +1,14 @@
+FROM mambaorg/micromamba:1.5.3
+
+LABEL image.author.name "Kristina K. Gagalova"
+LABEL image.author.email "kristina.gagalova@curtin.edu.au"
+
+# install container
+COPY --chown=$MAMBA_USER:$MAMBA_USER env_yml/template_env.yml /tmp/template_env.yml
+
+RUN micromamba create -n mytemplate
+
+RUN micromamba install -y -n mytemplate -f /tmp/template_env.yml && \
+    micromamba clean --all --yes
+
+ENV PATH="/opt/conda/envs/mytemplate/bin:${PATH}"
