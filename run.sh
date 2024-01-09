@@ -1,7 +1,6 @@
 
 NXF_ANSI_LOG=false nextflow-22.10.3-all run ./main.nf \
-  -with-docker "kristinagagalova/pante:pante2-v1.0.0" \
-  -profile standard \
+  -profile docker \
   -resume \
   --genomes "test/*.fasta" \
   --outdir "test/results" #\

@@ -1,4 +1,4 @@
-# PanTE2
+# PanTE2 - version update!!!
 
 An updated version of PanTE. Please run the following command using singularity (nexflow version has to be <=22.10.7)
 ```
