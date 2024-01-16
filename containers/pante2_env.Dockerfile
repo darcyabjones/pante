@@ -27,9 +27,6 @@ ENV PATH="/opt/conda/envs/pante2/bin:/opt/conda/envs/repeatmodeler/bin:${PATH}"
 ENV PATH="/opt/conda/envs/pante2/lib/python3.10/bin:${PATH}"
 ENV PYTHONPATH="/opt/conda/envs/pante2/lib/python3.10/site-packages/:${PYTHONPATH}"
 
-ENV RMASK_PREFIX="/opt/conda/envs/pante2/share/RepeatMasker/"
-ENV PATH="${RMASK_PREFIX}:${RMASK_PREFIX}/util:${PATH}"
-
 # independent tools
 
 ARG OCCULTERCUT_VERSION
@@ -108,3 +105,31 @@ RUN  set -eu \
   && sed -i '1i #!/usr/bin/perl' EAHelitron
 
 ENV PATH="${EAHELITRON_PREFIX}/bin/EAHelitron:${PATH}"
+
+#---- new version of RepeatMasker 4.1.6 which has a new db structure (lighter!). Will wait until this gets on conda), in the meanwhile compiling manually
+
+ARG RMASK_PREFIX
+ARG RMASK_URL
+
+ENV RM_LIB="${RMASK_PREFIX}/RepeatMasker/Libraries"
+
+RUN  set -eu \
+  && DEBIAN_FRONTEND=noninteractive \
+  && . /build/base.sh \
+  && update-ca-certificates \
+  && mkdir -p "${RMASK_PREFIX}" \
+  && cd "${RMASK_PREFIX}" \
+  && wget -O repmasker.tar.gz "${RMASK_URL}" \
+  && tar -zxf repmasker.tar.gz \
+  && chmod a+w RepeatMasker/Libraries \
+  && chmod a+w RepeatMasker/Libraries/famdb \
+  && cd RepeatMasker \
+  && cp RepeatMaskerConfig.pm RepeatMaskerConfig.pm.bak \
+  && gawk -i inplace '/TRF_PRGM/{ n=NR+3 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''/opt/conda/envs/pante2/bin/trf'\''") }1' RepeatMaskerConfig.pm \  
+  && gawk -i inplace '/DEFAULT_SEARCH_ENGINE/{ n=NR+5 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''rmblast'\''") }1' RepeatMaskerConfig.pm \
+  && gawk -i inplace '/HMMER_DIR/{ n=NR+7 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''/opt/conda/envs/pante2/bin'\''") }1' RepeatMaskerConfig.pm \
+  && gawk -i inplace '/RMBLAST_DIR/{ n=NR+12 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''/opt/conda/envs/pante2/bin'\''") }1' RepeatMaskerConfig.pm \  
+  && gawk -i inplace -v rmdir="${RMASK_PREFIX}" '/LIBDIR/{ n=NR+9 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''" rmdir "/RepeatMasker/Libraries'\''") }1' RepeatMaskerConfig.pm \
+  && cd .. && rm repmasker.tar.gz
+
+ENV PATH="${RMASK_PREFIX}/RepeatMasker:${RMASK_PREFIX}/RepeatMasker/util:${PATH}"

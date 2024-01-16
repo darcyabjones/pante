@@ -9,6 +9,11 @@ define make_image_name
 $(DOCKER_USER)/$(notdir $1):$(TAG)
 endef
 
+# RepeatMasker 4.1.6 - tmp solution! waiting for upload on conda
+RMASK_VERSION=4.1.6
+RMASK_URL=https://www.repeatmasker.org/RepeatMasker/RepeatMasker-$(RMASK_VERSION).tar.gz
+RMASK_PREFIX=$(INSTALL_BASE)/repeatmasker/$(RMASK_VERSION)
+
 
 # Other tools
 # -----------------------------------------------------------
@@ -88,6 +93,8 @@ docker/pante2: pante2_env.Dockerfile env_yml/pante2_env.yml
 	  --build-arg EAHELITRON_COMMIT="$(EAHELITRON_COMMIT)" \
 	  --build-arg EAHELITRON_REPO="$(EAHELITRON_REPO)" \
 	  --build-arg EAHELITRON_PREFIX_ARG="$(EAHELITRON_PREFIX_ARG)" \
+	  --build-arg RMASK_URL="$(RMASK_URL)" \
+	  --build-arg RMASK_PREFIX="$(RMASK_PREFIX)" \
 	  --file $< \
 	  -t "$(call make_image_name,$@)" \
 	  .

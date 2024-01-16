@@ -12,7 +12,8 @@ dependencies:
     - bioconda::infernal=1.1.4
     - bioconda::mmseqs2=14.7e284
     - bioconda::perl-parallel-forkmanager=2.02
-    - bioconda::repeatmasker=4.1.5
+    - bioconda::rmblast=2.14.1
+    - bioconda::trf=4.09.1
     - bioconda::trnascan-se=2.0.12
     - bioconda::viennarna=2.6.4
     - bioconda::vsearch=2.26.1
@@ -25,6 +26,7 @@ dependencies:
     - bioconda::perl-uri
     - bioconda::perl-libwww-perl
     - pip:
+         - h5py==3.10.0
          - biopython==1.81
          - intervaltree==3.1.0
          - pandas==2.1.4
