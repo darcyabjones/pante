@@ -58,14 +58,14 @@ def helpMessage() {
         http://www.repeatmasker.org/libraries/. Make sure the version
         matches the version of Repbase if you're using RepBase.
 
-    --dfam_hmm <glob>
+    --dfam_h5 <glob>
         Optional
-        Pre downloaded Dfam HMMs to use. Will download latest
+        Pre downloaded Dfam h5 to use. Will download latest
         if this isn't provided.
 
-    --dfam_hmm_url <url>
-        http://dfam.org/releases/current/families/Dfam.hmm.gz
-        The url to download the Dfam HMMs from if `--dfam_hmm` isn't provided.
+    --dfam_h5_url <url>
+        https://www.dfam.org/releases/Dfam_3.8/families/FamDB/dfam38_full.0.h5.gz
+        The url to download the Dfam HMMs from if `--dfam_h5` isn't provided.
 
     --dfam_embl <path>
         Optional
@@ -149,7 +149,7 @@ def helpMessage() {
         GyDB to search against the genomes.
 
     --gypsydb_url <url>
-        http://gydb.org/gydbModules/collection/collection/db/GyDB_collection.zip
+        https://gydb.org/extensions/Collection/collection/db/GyDB_collection.zip
         The URL to download GyDB from if `--gypsydb` is not provided.
 
     --protein_families <path>
@@ -249,7 +249,7 @@ params.repbase = false
 params.rm_meta = false
 
 params.dfam_hmm = false
-params.dfam_hmm_url = "http://dfam.org/releases/current/families/Dfam.hmm.gz"
+params.dfam_hmm_url = "https://www.dfam.org/releases/Dfam_3.8/families/FamDB/dfam38_full.0.h5.gz"
 
 params.dfam_embl = false
 params.dfam_embl_url = "http://dfam.org/releases/current/families/Dfam.embl.gz"
@@ -345,16 +345,16 @@ if ( params.rm_meta ) {
 }
 
 
-if ( params.dfam_hmm ) {
+if ( params.dfam_h5 ) {
 
     Channel
-        .fromPath(params.dfam_hmm, checkIfExists: true, type: "file")
+        .fromPath(params.dfam_h5, checkIfExists: true, type: "file")
         .first()
-        .set { dfamHMMs }
+        .set { dfamH5 }
 
 } else {
 
-    process getDfamHMMs {
+    process getDfamH5 {
 
         label "download"
         label "small_task"
@@ -363,7 +363,7 @@ if ( params.dfam_hmm ) {
         publishDir "${params.outdir}/downloads"
 
         output:
-        file "dfam.hmm.gz" into dfamHMMs
+        file "dfam38.0.h5.gz" into dfamH5
 
         script:
         """
@@ -371,8 +371,8 @@ if ( params.dfam_hmm ) {
           --no-check-certificate \
 	  --tries=1 \
           -c \
-          -O dfam.hmm.gz \
-          "${params.dfam_hmm_url}"
+          -O dfam38.0.h5.gz \
+          "${params.dfam_h5_url}"
         """
     }
 }
@@ -1201,7 +1201,7 @@ process prepRepeatMaskerDB {
     input:
     file "repbase.tar.gz" from repbase
     file "rm_meta.tar.gz" from rmMeta
-    file "Dfam.hmm.gz" from dfamHMMs
+    file "dfam38.0.h5.gz" from dfamH5
     file "Dfam.embl.gz" from dfamEMBLs
     file "RepeatPeps.lib" from rmRepeatPeps
 
@@ -1226,11 +1226,13 @@ process prepRepeatMaskerDB {
     # Repeat peps gets distributed with the repeat masker executables.
     # Not available elsewhere.
     cp -L RepeatPeps.lib Libraries
-    cp -L Dfam.hmm.gz Dfam.embl.gz Libraries
+    cp -L Dfam.embl.gz Libraries
+    mkdir -p Libraries/famdb
+    cp -L dfam38.0.h5.gz Libraries/famdb
 
     cd Libraries
 
-    gunzip --force Dfam.hmm.gz
+    gunzip --force famdb/dfam38.0.h5.gz
     # DFAM consensus filenames hard-coded into the script, so we move it.
     mv Dfam.embl.gz DfamConsensus.embl.gz
     gunzip --force DfamConsensus.embl.gz
@@ -1319,9 +1321,6 @@ process runRepeatModeler {
     # I'm not sure if repeatmodeler will too, but just to be safe.
     # We copy it to avoid messing up checkpointing.
 
-    cp -rL rmlib rmlib_tmp
-    export RM_LIB="\${PWD}/rmlib_tmp"
-
     # Where will this be placed?
     BuildDatabase -name "${name}" -engine ncbi "${fasta}"
 
@@ -1337,8 +1336,6 @@ process runRepeatModeler {
     then
       mv "${name}-families.stk" "${name}_repeatmodeler.stk"
     fi
-
-    rm -rf -- rmlib_tmp RM_*
     """
 }
 
@@ -2263,17 +2260,12 @@ process runRepeatClassifier {
 
     script:
     """
-    cp -rL rmlib rmlib_tmp
-    export RM_LIB="\${PWD}/rmlib_tmp"
-
     RepeatClassifier \
       -consensi families_consensi.fasta \
       -stockholm families.stk
 
     mv families_consensi.fasta.classified families_classified_consensi.fasta
     mv families-classified.stk families_classified.stk
-
-    rm -rf -- rmlib_tmp
     """
 }
 
@@ -2311,14 +2303,13 @@ process runRepeatMaskerSpecies {
     """
     # repeatmasker modifies the content of rmlib.
     # We copy it to avoid messing up checkpointing.
-
     cp -rL rmlib rmlib_tmp
-    export RM_LIB="\${PWD}/rmlib_tmp"
 
     RepeatMasker \
       -e ncbi \
       -pa "${task.cpus}" \
       -species "${params.rm_species}" \
+      -libdir "./rmlib_tmp" \
       -xsmall \
       -gff \
       -alignments \
@@ -2329,7 +2320,7 @@ process runRepeatMaskerSpecies {
     mv "${fasta.name}.masked" "${name}_repeatmasker_species_masked.fasta"
     mv "${fasta.name}.tbl" "${name}_repeatmasker_species_repeat_densities.txt"
     mv "${fasta.name}.out" "${name}_repeatmasker_species.txt"
-    rm -rf -- rmlib_tmp
+    rm -rf -- ./rmlib_tmp
     """
 }
 
@@ -2362,14 +2353,13 @@ process runRepeatMasker {
     """
     # repeatmasker modifies the content of rmlib.
     # We copy it to avoid messing up checkpointing.
-
     cp -rL rmlib rmlib_tmp
-    export RM_LIB="\${PWD}/rmlib_tmp"
 
     RepeatMasker \
       -e ncbi \
       -pa "${task.cpus}" \
       -lib families_consensi.fasta \
+      -libdir "./rmlib_tmp" \
       -xsmall \
       -alignments \
       -excln \
@@ -2379,7 +2369,7 @@ process runRepeatMasker {
     mv "${fasta.name}.masked" "${name}_repeatmasker_masked.fasta"
     mv "${fasta.name}.tbl" "${name}_repeatmasker_repeat_densities.txt"
     mv "${fasta.name}.out" "${name}_repeatmasker.txt"
-    rm -rf -- rmlib_tmp
+    rm -rf -- ./rmlib_tmp
     """
 }
 
