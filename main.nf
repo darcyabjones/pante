@@ -248,8 +248,8 @@ params.genomes = false
 params.repbase = false
 params.rm_meta = false
 
-params.dfam_hmm = false
-params.dfam_hmm_url = "https://www.dfam.org/releases/Dfam_3.8/families/FamDB/dfam38_full.0.h5.gz"
+params.dfam_h5 = false
+params.dfam_h5 = "https://www.dfam.org/releases/Dfam_3.8/families/FamDB/dfam38_full.0.h5.gz"
 
 params.dfam_embl = false
 params.dfam_embl_url = "http://dfam.org/releases/current/families/Dfam.embl.gz"
