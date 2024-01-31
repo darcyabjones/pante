@@ -1,4 +1,4 @@
-name: pante2
+name: pante2-rnammer
 channels:
     - conda-forge
     - defaults
@@ -11,7 +11,8 @@ dependencies:
     - bioconda::infernal=1.1.4
     - bioconda::mmseqs2=14.7e284
     - bioconda::perl-parallel-forkmanager=2.02
-    - bioconda::repeatmasker=4.1.5
+    - bioconda::rmblast=2.14.1
+    - bioconda::trf=4.09.1
     - bioconda::trnascan-se=2.0.12
     - bioconda::viennarna=2.6.4
     - bioconda::vsearch=2.26.1
@@ -30,5 +31,6 @@ dependencies:
          - pandas==2.1.4
          - setuptools==69.0.2
          - wheel==0.42.0
+         - h5py==3.10.0
          - git+https://github.com/KristinaGagalova/seqrenamer.git@384862afd3fe5aa4dd6618c258eb31ef20a3fcda
          - git+https://github.com//darcyabjones/gffpal.git@454424857b7cc914d116c708ab73da095fa07fb2

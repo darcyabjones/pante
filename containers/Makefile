@@ -122,6 +122,8 @@ docker/pante2-rnammer: pante2-rnammer_env.Dockerfile env_yml/pante2-rnammer_env.
 		    --build-arg HMMER2_VERSION="$(HMMER2_VERSION)" \
 		    --build-arg HMMER2_URL="$(HMMER2_URL)" \
 		    --build-arg HMMER2_PREFIX=$(INSTALL_BASE)/hmmer2/$(HMMER2_VERSION) \
+		    --build-arg RMASK_URL="$(RMASK_URL)" \
+          	    --build-arg RMASK_PREFIX="$(RMASK_PREFIX)" \
                     --file $< \
                     -t "$(call make_image_name,$@)" \
                     . ; \

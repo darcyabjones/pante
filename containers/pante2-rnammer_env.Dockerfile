@@ -149,3 +149,31 @@ RUN  set -eu \
   && sed -i "s~/usr/cbs/bio/bin/linux64/hmmsearch~${HMMER2_PREFIX}/bin/hmmsearch~" rnammer
 
 ENV PATH="${RNAMMER_PREFIX}:${PATH}"
+
+#---- new version of RepeatMasker 4.1.6 which has a new db structure (lighter!). Will wait until this gets on conda), in the meanwhile compiling manually
+
+ARG RMASK_PREFIX
+ARG RMASK_URL
+
+RUN  set -eu \
+  && DEBIAN_FRONTEND=noninteractive \
+  && . /build/base.sh \
+  && update-ca-certificates \
+  && mkdir -p "${RMASK_PREFIX}" \
+  && cd "${RMASK_PREFIX}" \
+  && wget -O repmasker.tar.gz "${RMASK_URL}" \
+  && tar -zxf repmasker.tar.gz \
+  && chmod a+w RepeatMasker/Libraries \
+  && chmod a+w RepeatMasker/Libraries/famdb \
+  && mv RepeatMasker RepeatMasker2 \
+  && mv RepeatMasker2/* ./ && rm -r RepeatMasker2 \
+  && cp RepeatMaskerConfig.pm RepeatMaskerConfig.pm.bak \
+  && gawk -i inplace '/TRF_PRGM/{ n=NR+3 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''/opt/conda/envs/pante2-rnammer/bin/trf'\''") }1' RepeatMaskerConfig.pm \
+  && gawk -i inplace '/DEFAULT_SEARCH_ENGINE/{ n=NR+5 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''rmblast'\''") }1' RepeatMaskerConfig.pm \
+  && gawk -i inplace '/HMMER_DIR/{ n=NR+7 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''/opt/conda/envs/pante2-rnammer/bin'\''") }1' RepeatMaskerConfig.pm \
+  && gawk -i inplace '/RMBLAST_DIR/{ n=NR+12 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''/opt/conda/envs/pante2-rnammer/bin'\''") }1' RepeatMaskerConfig.pm \
+  && gawk -i inplace -v rmdir="${RMASK_PREFIX}" '/LIBDIR/{ n=NR+9 } NR==n{ sub(/'\''value'\'' => '\'''\''/, "'\''value'\'' => '\''" rmdir "/Libraries'\''") }1' RepeatMaskerConfig.pm \
+  && rm repmasker.tar.gz
+
+ENV RMASK_PREFIX="${RMASK_PREFIX}"
+ENV PATH="${RMASK_PREFIX}:${RMASK_PREFIX}/util:${PATH}"
