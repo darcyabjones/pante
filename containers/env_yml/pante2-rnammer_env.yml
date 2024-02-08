@@ -16,6 +16,7 @@ dependencies:
     - bioconda::trnascan-se=2.0.12
     - bioconda::viennarna=2.6.4
     - bioconda::vsearch=2.26.1
+    - bioconda::occultercut=1.1
     - defaults::git
     - conda-forge::gnuplot=5.4.8
     - conda-forge::r-optparse

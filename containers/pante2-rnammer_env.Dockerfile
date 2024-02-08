@@ -30,38 +30,6 @@ ENV PYTHONPATH="/opt/conda/envs/pante2-rnammer/lib/python3.10/site-packages/:${P
 ENV RMASK_PREFIX="/opt/conda/envs/pante2-rnammer/share/RepeatMasker/"
 ENV PATH="${RMASK_PREFIX}:${RMASK_PREFIX}/util:${PATH}"
 
-# independent tools
-
-ARG OCCULTERCUT_VERSION
-ARG OCCULTERCUT_URL
-ARG OCCULTERCUT_PREFIX_ARG
-ENV OCCULTERCUT_PREFIX="${OCCULTERCUT_PREFIX_ARG}"
-
-WORKDIR /tmp
-RUN  set -eu \
-  && . /build/base.sh \
-  && apt-get update \
-  && apt-get install -y \
-       ca-certificates \
-       build-essential \
-       procps \
-       wget \
-       libgl1 \
-       gzip \
-       zip \
-       unzip \
-  && update-ca-certificates \
-  && wget -O occultercut.tar.gz "${OCCULTERCUT_URL}" \
-  && tar -zxf occultercut.tar.gz \
-  && cd OcculterCut* \
-  && make -f makefile \
-  && mkdir -p "${OCCULTERCUT_PREFIX}/bin" \
-  && cp -r OcculterCut "${OCCULTERCUT_PREFIX}/bin" \
-  && cd .. \
-  && rm -rf -- OcculterCut* occultercut*
-
-ENV PATH="${OCCULTERCUT_PREFIX}/bin:${PATH}"
-
 ARG MITEFINDER_COMMIT
 ARG MITEFINDER_REPO
 ARG MITEFINDER_PREFIX_ARG
@@ -71,6 +39,15 @@ RUN  set -eu \
   && DEBIAN_FRONTEND=noninteractive \
   && . /build/base.sh \
   && apt-get update \
+  && apt-get install -y \
+	ca-certificates \
+	build-essential \
+	procps \
+	wget \
+	libgl1 \
+	gzip \
+	zip \
+	unzip \
   && git clone "${MITEFINDER_REPO}" \
   && cd miteFinder \
   && git checkout "${MITEFINDER_COMMIT}" \

@@ -17,10 +17,6 @@ RMASK_PREFIX=$(INSTALL_BASE)/repeatmasker/$(RMASK_VERSION)
 
 # Other tools
 # -----------------------------------------------------------
-OCCULTERCUT_VERSION=1.1
-OCCULTERCUT_URL=https://downloads.sourceforge.net/project/occultercut/OcculterCut_v1.1.tar.gz
-OCCULTERCUT_PREFIX_ARG=$(INSTALL_BASE)/occultercut/$(OCCULTERCUT_VERSION)
-
 MITEFINDER_COMMIT=833754b
 MITEFINDER_REPO=https://github.com/screamer/miteFinder.git
 MITEFINDER_PREFIX_ARG=$(INSTALL_BASE)/mitefinder/$(MITEFINDER_COMMIT)
@@ -84,9 +80,6 @@ dockerpull/%:
 # THE MONOLITH(s)
 docker/pante2: pante2_env.Dockerfile env_yml/pante2_env.yml
 	docker build \
-	  --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
-	  --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
-	  --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
 	  --build-arg MITEFINDER_COMMIT="$(MITEFINDER_COMMIT)" \
 	  --build-arg MITEFINDER_REPO="$(MITEFINDER_REPO)" \
 	  --build-arg MITEFINDER_PREFIX_ARG="$(MITEFINDER_PREFIX_ARG)" \
@@ -107,9 +100,6 @@ docker/pante2-rnammer: pante2-rnammer_env.Dockerfile env_yml/pante2-rnammer_env.
 		echo "error RNAMMER_TAR is not set for pante2-rnammer. Please provide a value for RNAMMER_TAR. ex "sudo make docker/pante2-rnammer RNAMMER_TAR=/path/to/rnammertar")"; \
 	else \
 		docker build \
-                    --build-arg OCCULTERCUT_VERSION="$(OCCULTERCUT_VERSION)" \
-                    --build-arg OCCULTERCUT_URL="$(OCCULTERCUT_URL)" \
-                    --build-arg OCCULTERCUT_PREFIX_ARG="$(OCCULTERCUT_PREFIX_ARG)" \
                     --build-arg MITEFINDER_COMMIT="$(MITEFINDER_COMMIT)" \
                     --build-arg MITEFINDER_REPO="$(MITEFINDER_REPO)" \
                     --build-arg MITEFINDER_PREFIX_ARG="$(MITEFINDER_PREFIX_ARG)" \
