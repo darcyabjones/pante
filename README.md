@@ -20,7 +20,6 @@ NXF_ANSI_LOG=false nextflow run ./main.nf \
 ```
 
 ***
-
 # PanTE
 
 A pipeline for predicting and masking transposable elements in multiple genomes.
@@ -38,7 +37,7 @@ To run PanTE you'll just need your genomes and optionally a copy of the [RepBase
 
 The pipeline follows these main steps:
 
-1. Predict non-coding RNA elements using [tRNAScan-SE](http://lowelab.ucsc.edu/tRNAscan-SE/), [Infernal](http://eddylab.org/infernal/) (searching against [Rfam](https://rfam.xfam.org/)), and optionally [RNAmmer](http://www.cbs.dtu.dk/services/RNAmmer/).
+1. Predict non-coding RNA elements using [tRNAScan-SE](http://lowelab.ucsc.edu/tRNAscan-SE/), [Infernal](http://eddylab.org/infernal/) (searching against [Rfam](https://rfam.xfam.org/)), and optionally [RNAmmer](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=rnammer&version=1.2&packageversion=1.2&platform=Unix).
 2. Predict transposable elements using [RepeatModeler](http://www.repeatmasker.org/RepeatModeler/), [LTR](http://genometools.org/tools/gt_ltrharvest.html)[Harvest](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/1471-2105-9-18)/[LTR](http://genometools.org/tools/gt_ltrdigest.html)[Digest](https://academic.oup.com/nar/article/37/21/7002/1420683), [EAHelitron](https://github.com/dontkme/EAHelitron), [MiteFinder 2](https://github.com/screamer/miteFinder), and [MMSeqs2](https://github.com/soedinglab/MMseqs2) profile searches against [GyDB](http://www.gydb.org/index.php/Main_Page), selected [Pfam](http://www.gydb.org/index.php/Main_Page) models, and a custom set of TE proteins derived from the [TransposonPSI](http://transposonpsi.sourceforge.net/) and [LTR_retriever](https://github.com/oushujun/LTR_retriever/tree/master/database) libraries.
 3. Combine all TE predictions (except LTRDigest/Harvest) and cluster them to form conservative families using [vsearch](https://github.com/torognes/vsearch).
 4. Filter the families based on minimum abundance within each genome and presence across the population.
@@ -77,7 +76,7 @@ Assuming you have singularity and nextflow installed (See INSTALL).
 Say you have a bunch of genome fasta files in a folder `genomes/*.fasta`.
 
 ```bash
-nextflow run darcyabjones/pante -profile singularity -resume --genomes "genomes/*.fasta"
+nextflow run KristinaGagalova/pante2 -profile singularity -resume --genomes "genomes/*.fasta"
 ```
 
 Will run the full pipeline (except for RNAmmer and RepeatMasker using the "species" model).
@@ -93,7 +92,7 @@ If you do have access to RepBase, it's probably worth using it even if you aren'
 The value given to `--species` can be any NCBI taxonomy name and is provided to the RepeatMasker option `-species`.
 
 ```bash
-nextflow run darcyabjones/pante -profile singularity -resume \
+nextflow run KristinaGagalova/pante2 -profile singularity -resume \
   --genomes "genomes/*.fasta" \
   --repbase "downloads/RepBaseRepeatMaskerEdition-20181026.tar.gz" \
   --rm_meta "downloads/RepeatMaskerMetaData-20181026.tar.gz" \
@@ -101,16 +100,25 @@ nextflow run darcyabjones/pante -profile singularity -resume \
 ```
 
 
-If you would like to include [RNAmmer](http://www.cbs.dtu.dk/services/RNAmmer/) rDNA predictions, you'll need to either install it on all machines that you're running the pipeline on, or you can build the extra container that does the install for you (See [containers/README.md](containers#proprietary-software)).
+If you would like to include [RNAmmer](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=rnammer&version=1.2&packageversion=1.2&platform=Unix) rDNA predictions, you'll need to either install it on all machines that you're running the pipeline on, or you can build the extra container that does the install for you (See [containers/README.md](containers#proprietary-software)).
 
 Then you can provide the `--rnammer` flag to enable those steps.
 Here i'm assuming that you've installed RNAmmer locally.
 
 ```bash
-nextflow run darcyabjones/pante -profile singularity -resume \
+nextflow run /path/to/pante2/main.nf -profile singularity -resume \
   --genomes "genomes/*.fasta" \
   --species "fungi" \
-  --rnammer
+  --rnammer \
+  -with-singularity "containers/singularity/pante2-rnammer.sif"
+```
+or
+```bash
+nextflow run /path/to/pante2/main.nf -profile docker -resume \
+  --genomes "genomes/*.fasta" \
+  --species "fungi" \
+  --rnammer \
+  -with-docker kristinagagalova/pante2-rnammer:v1.0.0
 ```
 
 
@@ -122,7 +130,7 @@ If you really want to install the software yourself look in the `containers` fol
 
 To run the containers, you'll need to install either [Singularity](https://sylabs.io/docs/) (recommended) or [Docker](https://www.docker.com/).
 
-The pipeline itself will pull the containers for you from [Sylabs Cloud](https://cloud.sylabs.io/library/darcyabjones/default/pante) or [DockerHub](https://hub.docker.com/r/darcyabjones/pante).
+The pipeline itself will pull the containers for you from [Sylabs Cloud](https://cloud.sylabs.io/library/kristinagagalova/default/pante2) or [DockerHub](https://hub.docker.com/r/kristinagagalova/pante2).
 
 On an ubuntu server, the process to install nextflow and singularity might look like this.
 
@@ -165,10 +173,10 @@ rm -rf -- singularity
 
 curl -s https://get.nextflow.io | bash
 
-./nextflow run darcyabjones/pante --help
+./nextflow run KristinaGagalova/pante2 --help
 ```
 
-Because RNAmmer has a restricted license, you'll need to [download the source files yourself](http://www.cbs.dtu.dk/cgi-bin/nph-sw_request?rnammer) and either install it locally or build a special container that includes it.
+Because RNAmmer has a restricted license, you'll need to [download the source files yourself](https://services.healthtech.dtu.dk/cgi-bin/sw_request?software=rnammer&version=1.2&packageversion=1.2&platform=Unix) and either install it locally or build a special container that includes it.
 There are instructions for doing this [here](containers#proprietary-software).
 
 
@@ -188,13 +196,8 @@ It's likely that you'll have to tailor the compute configuration, but you should
 
 Available profiles for containerised software environments are:
 
-- `singularity` - Use a pre-built singularity image containing all non-proprietary software available from https://cloud.sylabs.io/library/darcyabjones/default/pante.
-- `singularity_indiv` - Uses individual singularity images for each tool build locally and stored in `containers/singularity`.
-- `singularity_plus` - Uses an extended version of the pre-built image which you must build locally and is stored as `containers/singularity/pante-plus.sif`.
-  Alternatively you could use the argument `-with-singularity path/to/pante-plus.sif`.
-- `docker` - Use a pre-build docker container. Like `singularity`. Available from https://cloud.docker.com/repository/docker/darcyabjones/pante.
-- `docker_indiv` - Use individual docker images which must be built locally. Like `singularity_indiv`.
-- `docker_plus` - Like `singularity_plus` but with docker.
+- `singularity` - Use a pre-built singularity image containing all non-proprietary software available from https://cloud.sylabs.io/library/kristinagagalova/default/pante2.
+- `docker` - Use a pre-build docker container. Like `singularity`. Available from https://hub.docker.com/r/kristinagagalova/pante2.
 
 If you don't specify a software environment profile, it is assumed that all dependencies are installed locally and available on your `PATH`.
 
@@ -206,7 +209,7 @@ If you don't like this, try singularity :)
 Available compute profiles are:
 
 - `standard` - (Default) Appropriate for running on a laptop with 4 CPUs and ~8GB RAM.
-- `nimbus` - Appropriate for cloud VMs or a local desktop with 16 CPUs and ~32 GB RAM each.
+- `nimbus` - Appropriate for cloud VMs or a local desktop with 2-16 CPUs and ~4-64 GB RAM each (depending on the Nimbus VM flavour you have access to).
 - `pawsey_zeus` - Is a config for running on the [Pawsey Zeus](https://pawsey.org.au/systems/zeus/) compute cluster using SLURM.
   Use this as more of a template for setting up your own profile as HPC configuration is pretty specific (and in this case contains some hard coded user options, sorry).
 

@@ -18,7 +18,7 @@ def helpMessage() {
     ncRNAs and TEs like so:
 
     ```bash
-    nextflow run darcyabjones/pante \
+    nextflow run KristinaGagalova/pante2 \
       -profile singularity \
       -resume \
       --genomes "genomes/*.fasta"
@@ -27,7 +27,7 @@ def helpMessage() {
     If you have access to RepBase you can include that:
 
     ```
-    nextflow run darcyabjones/pante -profile singularity -resume \
+    nextflow run KristinaGagalova/pante2 -profile singularity -resume \
       --genomes "genomes/*.fasta" \
       --repbase "downloads/RepBaseRepeatMaskerEdition-20181026.tar.gz" \
       --rm_meta "downloads/RepeatMaskerMetaData-20181026.tar.gz" \

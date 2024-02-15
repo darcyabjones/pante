@@ -5,11 +5,17 @@ This folder contains the Dockerfiles to build containers to run the pipeline.
 Prebuilt released/tagged versions are available at:
 
 * [sylabs repo](https://cloud.sylabs.io/library/kristinagagalova/default/pante2) for singularity
+* [docker repo](https://hub.docker.com/r/kristinagagalova/pante2/tags) for docker
 
 To pull those images:
 
 ```
 singularity pull library://kristinagagalova/default/pante2:v1.0.0
+
+```
+
+```
+docker pull kristinagagalova/pante2:v1.0.0
 
 ```
 
@@ -101,12 +107,26 @@ decides if it needs to rebuild anything.
 
 #### RNAmmer build
 
+Clone the repository
+```
+git clone https://github.com/KristinaGagalova/pante2.git
+```
+
 Download the source tar file `rnammer-1.2.src.tar.gz` into the `containers/rnammer-tar` subfolder.
+```
+cd pante2/containers
+mkdir rnammer-tag
+cp /home/user/rnammer-1.2.src.tar.gz rnammer-tar/
+```
 
 Build the docker container for RNAmmer.
-
 ```bash
-sudo RNAMMER_TAR=rnammer-tar/rnammer-1.2.Unix.tar.gz make docker/pante2-rnammer
+sudo make docker/pante2-rnammer RNAMMER_TAR=rnammer-tar/rnammer-1.2.Unix.tar.gz
+```
+
+Build the singularity container for RNAmmer.
+```bash
+sudo make singularity/pante2-rnammer.sif  RNAMMER_TAR=rnammer-tar/rnammer-1.2.Unix.tar.gz
 ```
 
 This will create a new monolithic container with RNAmmer for you.
